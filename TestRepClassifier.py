@@ -18,8 +18,7 @@ from MetaAnalysis.Utilities import filter_airr_seq_df_by_labels, build_feature_t
 from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
 from MetaAnalysis.SubSample import sample_by_n_clusters, sample_by_n_sequences
 
-
-ray.init(ignore_reinit_error=True, runtime_env={'working_dir': '/work/boazfr/dev/'}, num_cpus=4)
+ray.is_initialized() & ray.init(ignore_reinit_error=True, runtime_env={'working_dir': '/work/boazfr/dev/'}, num_cpus=4)
 
 
 def test_fold(
