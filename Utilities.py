@@ -761,6 +761,7 @@ def filter_airr_seq_df_by_labels(airr_seq_df: pd.DataFrame, labels: pd.Series) -
     filter airr-seq data frame to sequences belonging to samples in labels
     :param airr_seq_df: airr-seq data frame
     :param labels: series of labels
-    :return: filtered airr-seq data frame
+    :return: a filtered slice of the airr-seq data frame
     """
-    return airr_seq_df.reset_index().set_index(['study_id', 'subject_id'], drop=False).loc[labels.index].set_index('id')
+    return airr_seq_df[airr_seq_df.set_index(['study_id', 'subject_id']).index.isin(labels.index)]
+
