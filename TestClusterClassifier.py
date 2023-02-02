@@ -11,6 +11,7 @@ import pandas as pd
 import os
 import numpy as np
 import ray
+import psutil
 from changeo.Gene import getFamily, getGene
 from sklearn.metrics import recall_score, precision_score
 from sklearn.model_selection import RepeatedStratifiedKFold
@@ -28,7 +29,10 @@ from MetaAnalysis.Defaults import default_random_state
 if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={'working_dir': '/work/boazfr/dev/packages'},
+        runtime_env={
+            'working_dir': '/work/boazfr/dev/packages',
+        },
+        object_store_memory=int(psutil.virtual_memory().total*0.5),
         num_cpus=max(int(os.cpu_count()*0.75), 1)
     )
 

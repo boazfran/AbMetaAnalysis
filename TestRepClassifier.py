@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 from sklearn.model_selection import RepeatedStratifiedKFold
 import os
 import ray
+import psutil
 
 # MetaAnalysis Imports
 sys.path.append('/work/boazfr/dev/packages/')
@@ -22,7 +23,10 @@ from MetaAnalysis.SubSample import sample_by_n_clusters, sample_by_n_sequences
 if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={'working_dir': '/work/boazfr/dev/packages'},
+        runtime_env={
+            'working_dir': '/work/boazfr/dev/packages',
+        },
+        object_store_memory=int(psutil.virtual_memory().total*0.5),
         num_cpus=max(int(os.cpu_count()*0.75), 1)
     )
 
