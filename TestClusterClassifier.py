@@ -87,7 +87,7 @@ def test_fold(
     print('building test_feature_table')
     test_feature_table = test_sequence_df.groupby(['study_id', 'subject_id']).apply(
         lambda frame: pd.Series(selected_features, index=selected_features).apply(
-            lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{i};') != -1) > 0
+            lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{cluster_id};') != -1) > 0
         )
     )
 
