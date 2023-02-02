@@ -14,7 +14,6 @@ import ray
 from changeo.Gene import getFamily, getGene
 from sklearn.metrics import recall_score, precision_score
 from sklearn.model_selection import RepeatedStratifiedKFold
-from multiprocessing import cpu_count
 
 
 # MetaAnalysis imports
@@ -30,7 +29,7 @@ if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
         runtime_env={'working_dir': '/work/boazfr/dev/packages'},
-        num_cpus=cpu_count()-1
+        num_cpus=max(int(os.cpu_count()*0.75), 1)
     )
 
 

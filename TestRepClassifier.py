@@ -10,7 +10,6 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 from sklearn.model_selection import RepeatedStratifiedKFold
 import os
 import ray
-from multiprocessing import cpu_count
 
 # MetaAnalysis Imports
 sys.path.append('/work/boazfr/dev/packages/')
@@ -24,7 +23,7 @@ if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
         runtime_env={'working_dir': '/work/boazfr/dev/packages'},
-        num_cpus=cpu_count()-1
+        num_cpus=max(int(os.cpu_count()*0.75), 1)
     )
 
 
