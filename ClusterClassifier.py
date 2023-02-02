@@ -51,6 +51,7 @@ class ClusterClassifier:
 
 def create_cluster_classifier(
         train_sequence_df: pd.DataFrame,
+        train_cluster_assignment: pd.Series,
         train_feature_table: pd.DataFrame,
         train_labels: pd.Series,
         default_label: bool,
@@ -60,6 +61,7 @@ def create_cluster_classifier(
     """
 
     :param train_sequence_df:
+    :param train_cluster_assignment:
     :param train_feature_table:
     :param train_labels:
     :param default_label: default cluster label when all features are zero
@@ -68,7 +70,7 @@ def create_cluster_classifier(
     :return:
     """
     case_sequence_df = train_sequence_df.loc[
-        train_sequence_df.cluster_id.isin(
+        train_cluster_assignment.isin(
             train_feature_table.loc[
                 :,
                 (
@@ -79,7 +81,7 @@ def create_cluster_classifier(
         )
     ]
     ctrl_sequence_df = train_sequence_df.loc[
-        train_sequence_df.cluster_id.isin(
+        train_cluster_assignment.isin(
             train_feature_table.loc[
             :, (train_feature_table.loc[train_labels.index[~train_labels]].sum() > 0) & (
                         train_feature_table.loc[train_labels.index[train_labels]].sum() == 0)

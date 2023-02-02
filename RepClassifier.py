@@ -18,16 +18,16 @@ from MetaAnalysis.ClusterClassifier import create_cluster_classifier
 
 
 def select_features(
-        airr_seq_df: pd.DataFrame,
-        feature_table: pd.DataFrame,
-        train_labels: pd.Series,
-        case_th: int,
-        ctrl_th: int,
-        mode: str ='naive',
-        k: int = 5,
-        kmer2cluster: dict = None
+    airr_seq_df: pd.DataFrame,
+    cluster_assignment: pd.Series,
+    feature_table: pd.DataFrame,
+    train_labels: pd.Series,
+    case_th: int,
+    ctrl_th: int,
+    mode: str ='naive',
+    k: int = 5,
+    kmer2cluster: dict = None
 ) -> np.ndarray:
-
     if mode == 'similar':
         features = feature_table.columns[
             (
@@ -49,9 +49,11 @@ def select_features(
             (feature_table.loc[train_labels.index[~train_labels]].sum() > ctrl_th)
         )
         cluster_clf = create_cluster_classifier(
-            airr_seq_df, feature_table, train_labels, default_label, k, kmer2cluster
+            airr_seq_df, cluster_assignment, feature_table, train_labels, default_label, k, kmer2cluster
         )
-        predicted_features = cluster_clf.predict(airr_seq_df.loc[airr_seq_df.cluster_id.isin(candidate_features)])
+        candidate_airr_seq_df = airr_seq_df.loc[cluster_assignment.isin(candidate_features)].copy()
+        candidate_airr_seq_df['cluster_id'] = cluster_assignment[cluster_assignment.isin(candidate_features)]
+        predicted_features = cluster_clf.predict(candidate_airr_seq_df)
         features = np.concat([features, predicted_features.index[predicted_features]])
     elif mode == 'naive':
         features = feature_table.columns[
@@ -71,6 +73,7 @@ class RepClassifier:
     def __init__(
         self,
         train_airr_seq_df: pd.DataFrame,
+        train_cluster_assignment: pd.Series,
         dist_th: float = 0.2,
         case_th: float = 1.0,
         ctrl_th: float = 0.0,
@@ -83,6 +86,7 @@ class RepClassifier:
         self.ctrl_th = ctrl_th
         self.feature_selection_mode = feature_selection_mode
         self.train_airr_seq_df = train_airr_seq_df
+        self.train_cluster_assignment = train_cluster_assignment
         self.k = k
         self.kmer2cluster = kmer2cluster
         self.selected_features = None
@@ -90,7 +94,7 @@ class RepClassifier:
 
     def fit(self, feature_table: pd.DataFrame, labels):
         self.selected_features = select_features(
-            self.train_airr_seq_df, feature_table, labels,
+            self.train_airr_seq_df, self.train_cluster_assignment, feature_table, labels,
             self.case_th, self.ctrl_th, self.feature_selection_mode, self.k, self.kmer2cluster
         )
         return self

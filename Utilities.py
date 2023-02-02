@@ -671,32 +671,39 @@ def get_imgt_allele(functional_group_allele):
     return functional_group_allele
 
 
-def build_feature_table(df: pd.DataFrame, mode: str = 'binary') -> pd.DataFrame:
+def build_feature_table(airr_seq_df: pd.DataFrame, cluster_assignment: pd.Series, mode: str = 'binary') -> pd.DataFrame:
     """
     builds a feature table where rows are the repertoire samples and the columns are the clusters
-    :param df: airr-seq data frame
+    :param airr_seq_df: airr-seq data frame
+    :param cluster_assignment: the cluster assignment of the airr_seq_df sequences
     :param mode: how to compute the values in the feature table, options are normalized, freq or binary
     :return: a feature table
     """
     # create feature table of subjects vs clusters frequency
     if mode == 'normalized':
         # cluster proportion in repertoire
-        feature_table = df.groupby(['study_id', 'subject_id']).apply(
-            lambda x: pd.DataFrame(
-                x.groupby('cluster_id').apply(lambda y: y.duplicate_count.sum()) / x.duplicate_count.sum()
+        feature_table = airr_seq_df.groupby(['study_id', 'subject_id']).apply(
+            lambda frame: pd.DataFrame(
+                cluster_assignment[frame.index].groupby(cluster_assignment[frame.index]).apply(
+                    lambda y: frame.loc[y.index].duplicate_count.sum()
+                ) / frame.duplicate_count.sum()
             ).transpose().reset_index(drop=True)
         ).droplevel(2).fillna(0)
     elif mode == 'freq':
         # cluster occurrences in repertoire
-        feature_table = df.groupby(['study_id', 'subject_id']).apply(
-            lambda x: pd.DataFrame(
-                x.cluster_id.value_counts()
+        feature_table = airr_seq_df.groupby(['study_id', 'subject_id']).apply(
+            lambda frame: pd.DataFrame(
+                cluster_assignment[frame.index].groupby(cluster_assignment[frame.index]).apply(
+                    lambda y: frame.loc[y.index].duplicate_count.sum()
+                )
             ).transpose().reset_index(drop=True)
         ).droplevel(2).fillna(0)
     elif mode == 'binary':
         # cluster existence in repertoire
-        feature_table = df.groupby(['study_id', 'subject_id']).apply(
-            lambda x: pd.DataFrame(np.ones(len(x.cluster_id.unique())), index=x.cluster_id.unique()).transpose()
+        feature_table = airr_seq_df.groupby(['study_id', 'subject_id']).apply(
+            lambda frame: pd.DataFrame(
+                np.ones(len(cluster_assignment[frame.index].unique())), index=cluster_assignment[frame.index].unique()
+            ).transpose()
         ).droplevel(2).fillna(0)
     else:
         assert False, 'unsupported mode value'

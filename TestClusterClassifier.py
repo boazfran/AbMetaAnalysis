@@ -36,7 +36,7 @@ if not ray.is_initialized():
 def test_fold(
     airr_seq_df: pandas.DataFrame,
     train_labels: pd.Series,
-    validation_labels: pd.Series,
+    test_labels: pd.Series,
     dist_mat_dir: str,
     case_th: int,
     default_label: bool,
@@ -47,7 +47,7 @@ def test_fold(
     Test fold of cluster classification
     :param airr_seq_df: airr seq dataframe
     :param train_labels: labels of the train set
-    :param validation_labels: labels of the validation set
+    :param test_labels: labels of the validation set
     :param dist_mat_dir: directory where the dataframe pairwise distance matrices are saved
     :param case_th: threshold for which test the cluster classification
     :param default_label: default cluster label when all features are zero
@@ -56,13 +56,13 @@ def test_fold(
     :return: data frame with the classification results, case/ctrl support, precision and recall
     """
     train_airr_seq_df = filter_airr_seq_df_by_labels(airr_seq_df, train_labels)
-    validation_sequence_df = filter_airr_seq_df_by_labels(airr_seq_df, validation_labels)
+    test_sequence_df = filter_airr_seq_df_by_labels(airr_seq_df, test_labels)
 
     print('adding cluster id')
-    train_airr_seq_df = add_cluster_id(train_airr_seq_df, dist_mat_dir, 0.2)
+    train_cluster_assignment = add_cluster_id(train_airr_seq_df, dist_mat_dir, 0.2)
 
     print('building train_feature_table')
-    train_feature_table = build_feature_table(train_airr_seq_df)
+    train_feature_table = build_feature_table(train_airr_seq_df, train_cluster_assignment)
 
     print('selecting features')
     selected_features = train_feature_table.columns[
@@ -72,54 +72,61 @@ def test_fold(
         )
     ]
     print('matching cluster id')
-    validation_sequence_df = match_cluster_id(
-        train_airr_seq_df.loc[train_airr_seq_df.cluster_id.isin(selected_features)],
-        validation_sequence_df,
+    test_cluster_assignment = match_cluster_id(
+        train_airr_seq_df.loc[train_cluster_assignment.isin(selected_features)],
+        train_cluster_assignment[train_cluster_assignment.isin(selected_features)],
+        test_sequence_df,
         dist_mat_dir,
         dist_th=0.2
     )
 
-    print('building validation_feature_table')
-    validation_feature_table = validation_sequence_df.groupby(['study_id', 'subject_id']).apply(
-        lambda x: pd.Series(selected_features, index=selected_features).apply(
-            lambda i: sum(x.matched_clusters.str.find(f';{i};') != -1) > 0
+    print('building test_feature_table')
+    test_feature_table = test_sequence_df.groupby(['study_id', 'subject_id']).apply(
+        lambda frame: pd.Series(selected_features, index=selected_features).apply(
+            lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{i};') != -1) > 0
         )
     )
 
-    positive_validation_features = validation_feature_table.columns[
+    positive_test_features = test_feature_table.columns[
         (
-            (validation_feature_table.loc[validation_labels.index[validation_labels]].sum() > 1) &
-            (validation_feature_table.loc[validation_labels.index[~validation_labels]].sum() == 0)
+            (test_feature_table.loc[test_labels.index[test_labels]].sum() > 1) &
+            (test_feature_table.loc[test_labels.index[~test_labels]].sum() == 0)
         )
     ]
-    positive_validation_features = pd.Series(positive_validation_features).astype(str)
-    negative_validation_features = validation_feature_table.columns[
-       validation_feature_table.loc[validation_labels.index[~validation_labels]].sum() > 0
+    positive_test_features = pd.Series(positive_test_features).astype(str)
+    negative_test_features = test_feature_table.columns[
+       test_feature_table.loc[test_labels.index[~test_labels]].sum() > 0
     ]
-    negative_validation_features = pd.Series(negative_validation_features).astype(str)
+    negative_test_features = pd.Series(negative_test_features).astype(str)
 
-    if (len(positive_validation_features) == 0) & (len(negative_validation_features) == 0):
+    if (len(positive_test_features) == 0) & (len(negative_test_features) == 0):
         return pd.DataFrame()
 
-    positive_validation_samples = train_airr_seq_df.loc[
-        train_airr_seq_df.cluster_id.astype(str).isin(positive_validation_features)
+    positive_test_samples = train_airr_seq_df.loc[
+        train_cluster_assignment.astype(str).isin(positive_test_features)
+    ].copy()
+    positive_test_samples['cluster_id'] = train_cluster_assignment[
+        train_cluster_assignment.astype(str).isin(positive_test_features)
     ]
-    negative_validation_samples = train_airr_seq_df.loc[
-        train_airr_seq_df.cluster_id.astype(str).isin(negative_validation_features)
+    negative_test_samples = train_airr_seq_df.loc[
+        train_cluster_assignment.astype(str).isin(negative_test_features)
+    ].copy()
+    negative_test_samples['cluster_id'] = train_cluster_assignment[
+        train_cluster_assignment.astype(str).isin(negative_test_features)
     ]
 
-    clf = create_cluster_classifier(
+    cluster_clf = create_cluster_classifier(
         train_airr_seq_df,
+        train_cluster_assignment,
         train_feature_table,
         train_labels,
         default_label,
         k,
         (lambda x: x) if kmer2cluster is None else (lambda x: kmer2cluster[x])
     )
-    feature_labels = pd.Series(True, index=positive_validation_features).append(
-        pd.Series(False, index=negative_validation_features))
-    predict_labels = clf.predict(positive_validation_samples.append(negative_validation_samples)).loc[
-        feature_labels.index]
+    feature_labels = pd.Series(True, index=positive_test_features).append(
+        pd.Series(False, index=negative_test_features))
+    predict_labels = cluster_clf.predict(positive_test_samples.append(negative_test_samples)).loc[feature_labels.index]
     res = pd.DataFrame(
         [
             sum(feature_labels),
@@ -141,7 +148,7 @@ def test_fold(
     return res
 
 
-@ray.remote
+@ray.remote(max_retries=0)
 def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster):
     test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster)
 
@@ -172,7 +179,7 @@ def test_cluster_classification(
     :param k: k by which to perform k-mers segmentation
     :return: data frame with the classification results, case/ctrl support, precision and recall
     """
-    sequence_df_id = ray.put(airr_seq_df)
+    airr_seq_df = ray.put(airr_seq_df)
     if kmer2cluster is not None:
         kmer2cluster = ray.put(kmer2cluster)
     result_ids = []
@@ -182,7 +189,7 @@ def test_cluster_classification(
         train_labels = labels.drop(index=validation_labels.index)
         result_ids.append(
             remote_test_fold.remote(
-                sequence_df_id, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster
+                airr_seq_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster
             )
         )
     results = pd.concat([ray.get(result_id) for result_id in result_ids])

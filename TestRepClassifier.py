@@ -61,12 +61,11 @@ def test_fold(
     )
     subject_table = pd.DataFrame(index=test_labels.index.tolist() + ['case_th', 'ctrl_th', 'dist_th', 'fs_mode', 'k', 'kmer_clustering'])
 
-    train_airr_seq_df = add_cluster_id(
-        filter_airr_seq_df_by_labels(airr_seq_df, train_labels), dist_mat_dir, dist_th=dist_th
-    )
-    validation_airr_sq_df = filter_airr_seq_df_by_labels(airr_seq_df, test_labels)
+    train_airr_seq_df = filter_airr_seq_df_by_labels(airr_seq_df, train_labels)
+    train_cluster_assignment = add_cluster_id(train_airr_seq_df, dist_mat_dir, dist_th=dist_th)
+    test_airr_sq_df = filter_airr_seq_df_by_labels(airr_seq_df, test_labels)
     print('building feature table')
-    train_feature_table = build_feature_table(train_airr_seq_df)
+    train_feature_table = build_feature_table(train_airr_seq_df, train_cluster_assignment)
 
     if len(k_values) == 0:
         k_values = [-1]
@@ -76,19 +75,20 @@ def test_fold(
             kmer2cluster = kmer2cluster_values[j] if j < len(kmer2cluster_values) else None
             print('creating rep classifier')
             rep_clf = RepClassifier(
-                train_airr_seq_df, dist_th, case_th, ctrl_th, fs_mode, k, kmer2cluster
+                train_airr_seq_df, train_cluster_assignment, dist_th, case_th, ctrl_th, fs_mode, k, kmer2cluster
             ).fit(
                 train_feature_table, train_labels
             )
-            validation_airr_sq_df = match_cluster_id(
-                train_airr_seq_df.loc[train_airr_seq_df.cluster_id.isin(rep_clf.selected_features)],
-                validation_airr_sq_df,
+            test_cluster_assignment = match_cluster_id(
+                train_airr_seq_df.loc[train_cluster_assignment.isin(rep_clf.selected_features)],
+                train_cluster_assignment[train_cluster_assignment.isin(rep_clf.selected_features)],
+                test_airr_sq_df,
                 dist_mat_dir,
                 dist_th
             )
-            test_feature_table = validation_airr_sq_df.groupby(['study_id', 'subject_id']).apply(
-                lambda x: pd.Series(rep_clf.selected_features, index=rep_clf.selected_features).apply(
-                    lambda cluster_id: sum(x.matched_clusters.str.find(f';{cluster_id};') != -1) > 0
+            test_feature_table = test_airr_sq_df.groupby(['study_id', 'subject_id']).apply(
+                lambda frame: pd.Series(rep_clf.selected_features, index=rep_clf.selected_features).apply(
+                    lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{cluster_id};') != -1) > 0
                 )
             ).loc[test_labels.index]
             predict_labels = rep_clf.predict(test_feature_table)
@@ -114,7 +114,7 @@ def test_fold(
     return results, subject_table.transpose()
 
 
-@ray.remote
+@ray.remote(max_retries=0)
 def remote_test_fold(
         airr_seq_df, train_labels, test_labels, dist_mat_dir, dist_th, case_th, ctrl_th,
         feature_selection_mode_values, k_values, kmer2cluster_values
@@ -127,18 +127,18 @@ def remote_test_fold(
 
 
 def test_rep_classifier(
-        airr_seq_df: pd.DataFrame,
-        labels: pd.Series,
-        dist_mat_dir: str,
-        train_only_labels: pd.Series = None,
-        n_splits: int = 10,
-        n_repeats: int = 10,
-        case_th_values: list = [1],
-        ctrl_th_values: list = [0],
-        dist_th_values: list = [0.2],
-        feature_selection_mode_values: list = ['naive'],
-        k_values: list = [],
-        kmer2cluster_values: list = []
+    airr_seq_df: pd.DataFrame,
+    labels: pd.Series,
+    dist_mat_dir: str,
+    train_only_labels: pd.Series = None,
+    n_splits: int = 10,
+    n_repeats: int = 10,
+    case_th_values: list = [1],
+    ctrl_th_values: list = [0],
+    dist_th_values: list = [0.2],
+    feature_selection_mode_values: list = ['naive'],
+    k_values: list = [],
+    kmer2cluster_values: list = []
 ):
     """
 

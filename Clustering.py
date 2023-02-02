@@ -79,8 +79,9 @@ def add_cluster_id(
     :param airr_seq_df: airr-seq dataframe to cluster
     :param dist_mat_dir: directory were pre-saved distance matrix are saved
     :param dist_th: normalized hamming distance cutoff of the complete linkage hierarchical clustering
-    :return: the input df with cluster_id column added
+    :return: a series with the cluster assignment
     """
+    res = pd.Series(np.nan, index=airr_seq_df.index, name='cluster_id')
     max_cluster_id = 0
     for (v_group, j_group, junction_aa_length), frame in airr_seq_df.groupby(['v_group', 'j_group', 'junction_aa_length']):
         dist_map_folder = os.path.join(dist_mat_dir, v_group, j_group, junction_aa_length)
@@ -88,16 +89,16 @@ def add_cluster_id(
             os.path.join(dist_map_folder, 'pdist.tsv.gz'), sep='\t'
         ).set_index(['id']).loc[frame.index, frame.index]
         if dist_df.shape[0] == 1:
-            airr_seq_df.loc[frame.index, 'cluster_id'] = max_cluster_id
+            res.loc[frame.index] = max_cluster_id
         else:
             # We add a small extra to the distance threshold because when computing the distances we add penalty to
             # sequences from same study and/or same subject. The addition is small enough to only be relevant as
             # break even rule for sequences pairs with same hamming distance
-            airr_seq_df.loc[frame.index, 'cluster_id'] = max_cluster_id + AgglomerativeClustering(
+            res.loc[frame.index] = max_cluster_id + AgglomerativeClustering(
                 affinity='precomputed', linkage='complete', distance_threshold=dist_th + 0.0002, n_clusters=None
             ).fit_predict(dist_df)
-        max_cluster_id = airr_seq_df.cluster_id.max() + 1
-    airr_seq_df.cluster_id = airr_seq_df.cluster_id.astype(int)
+        max_cluster_id = res.max() + 1
+    res = res.astype(int)
 
     return airr_seq_df
 
@@ -107,6 +108,7 @@ def add_cluster_id(
 
 def match_cluster_id(
         clustered_airr_seq_df: pandas.DataFrame,
+        cluster_assignment: pd.Series,
         to_match_airr_seq_df: pandas.DataFrame,
         dist_mat_dir: str,
         dist_th: float = 0.2
@@ -115,33 +117,32 @@ def match_cluster_id(
     match sequences from not clustered df to clusters in a clustered df. note that a sequence can match more than one
     cluster. the matches will be added in string frame where each matched cluster id will be surrounded by ';' chars
     :param clustered_airr_seq_df: airr-seq data frame with cluster_id column
+    :param cluster_assignment:
     :param to_match_airr_seq_df: airr-seq data frame to match to the clusters in the clustered_df
     :param dist_mat_dir: directory were pre-saved distance matrix are saved
     :param dist_th: normalized hamming distance cutoff of the complete linkage hierarchical clustering
-    :return: the input df with matched_clusters column added
+    :return: series with the matched clusters strings, each matched cluster_id is wrapped with ';' chars
     """
 
-    to_match_airr_seq_df['matched_clusters'] = ";"
+    res = pd.Series(';', index=to_match_airr_seq_df.index, name='matched_clusters')
 
     for (v_group, j_group, junction_aa_length), to_match_frame in to_match_airr_seq_df.groupby(
             ['v_group', 'j_group', 'junction_aa_length']
     ):
-        clustered_frame = clustered_airr_seq_df.loc[
+        clustered_frame = cluster_assignment[
             (clustered_airr_seq_df.v_group == v_group) & (clustered_airr_seq_df.j_group == j_group) & (clustered_airr_seq_df.junction_aa_length == junction_aa_length)
-            ]
+        ]
         if len(clustered_frame) == 0:
             continue
         dist_df = pd.read_csv(
             os.path.join(dist_mat_dir, v_group, j_group, junction_aa_length, 'pdist.tsv.gz'),
             sep='\t'
         ).set_index(['id']).loc[clustered_frame.index, to_match_frame.index]
-        for cluster_id, cluster_id_frame in clustered_frame.groupby('cluster_id'):
+        for cluster_id, cluster_id_frame in clustered_frame.groupby(clustered_frame):
             matched_sequences = to_match_frame.index[
                 dist_df.loc[cluster_id_frame.index].apply(lambda x: x > dist_th + 0.0002).sum() == 0
             ]
-            to_match_airr_seq_df.loc[
-                matched_sequences, 'matched_clusters'
-            ] = to_match_airr_seq_df.loc[matched_sequences, 'matched_clusters'] + str(cluster_id) + ';'
+            res.loc[matched_sequences] = res.loc[matched_sequences] + str(cluster_id) + ';'
 
-    return to_match_airr_seq_df
+    return res
 
