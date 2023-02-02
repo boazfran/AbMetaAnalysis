@@ -17,7 +17,7 @@ from statsmodels.stats.proportion import multinomial_proportions_confint
 
 # MetaAnalysis imports
 import sys
-sys.path.append('/work/boazfr/dev/')
+sys.path.append('/work/boazfr/dev/packages')
 from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id
 from MetaAnalysis.Utilities import build_feature_table
 from MetaAnalysis.EDA import mannwhitneyu_test

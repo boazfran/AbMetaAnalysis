@@ -17,7 +17,7 @@ from scipy.spatial.distance import squareform
 
 # MetaAnalysis imports
 import sys
-sys.path.append('/work/boazfr/dev/')
+sys.path.append('/work/boazfr/dev/packages')
 from MetaAnalysis.Utilities import get_imgt_allele
 
 

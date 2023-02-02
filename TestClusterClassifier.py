@@ -19,7 +19,7 @@ from multiprocessing import cpu_count
 
 # MetaAnalysis imports
 import sys
-sys.path.append('/work/boazfr/dev/')
+sys.path.append('/work/boazfr/dev/packages')
 from MetaAnalysis.ClusterClassifier import create_cluster_classifier
 from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id
 from MetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels
@@ -29,7 +29,7 @@ from MetaAnalysis.Defaults import default_random_state
 if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={'working_dir': '/work/boazfr/dev/', 'includes': ['/work/boazfr/dev/MetaAnalysis']},
+        runtime_env={'working_dir': '/work/boazfr/dev/packages'},
         num_cpus=cpu_count()-1
     )
 
