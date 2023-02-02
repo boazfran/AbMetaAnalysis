@@ -14,6 +14,8 @@ import ray
 from changeo.Gene import getFamily, getGene
 from sklearn.metrics import recall_score, precision_score
 from sklearn.model_selection import RepeatedStratifiedKFold
+from multiprocessing import cpu_count
+
 
 # MetaAnalysis imports
 import sys
@@ -24,7 +26,12 @@ from MetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_la
 from MetaAnalysis.Defaults import default_random_state
 
 
-ray.is_initialized() & ray.init(ignore_reinit_error=True, runtime_env={'working_dir': '/work/boazfr/dev/'}, num_cpus=4)
+if not ray.is_initialized():
+    ray.init(
+        ignore_reinit_error=True,
+        runtime_env={'working_dir': '/work/boazfr/dev/', 'includes': ['/work/boazfr/dev/MetaAnalysis']},
+        num_cpus=cpu_count()-1
+    )
 
 
 def test_fold(
