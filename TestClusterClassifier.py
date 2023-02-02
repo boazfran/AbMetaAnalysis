@@ -28,14 +28,14 @@ ray.is_initialized() & ray.init(ignore_reinit_error=True, runtime_env={'working_
 
 
 def test_fold(
-        airr_seq_df: pandas.DataFrame,
-        train_labels: pd.Series,
-        validation_labels: pd.Series,
-        dist_mat_dir: str,
-        case_th: int,
-        default_label: bool,
-        k: int,
-        kmer2cluster: dict = None,
+    airr_seq_df: pandas.DataFrame,
+    train_labels: pd.Series,
+    validation_labels: pd.Series,
+    dist_mat_dir: str,
+    case_th: int,
+    default_label: bool,
+    k: int,
+    kmer2cluster: dict = None,
 ) -> pd.DataFrame:
     """
     Test fold of cluster classification
@@ -141,14 +141,14 @@ def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir,
 
 
 def test_cluster_classification(
-        airr_seq_df: pd.DataFrame,
-        labels: pd.Series,
-        dist_mat_dir: str,
-        n_splits: int = 10,
-        n_repeats: int = 10,
-        kmer2cluster: dict = None,
-        case_th: int = 2,
-        k: int = 5
+    airr_seq_df: pd.DataFrame,
+    labels: pd.Series,
+    output_dir: str,
+    n_splits: int = 10,
+    n_repeats: int = 10,
+    case_th: int = 2,
+    k: int = 5,
+    kmer2cluster: dict = None
 ):
     """
     Run repeated cross validation test folds of cluster classification and return data frame with all folds results
@@ -174,4 +174,8 @@ def test_cluster_classification(
             test_fold.remote(sequence_df_id, validation_labels, train_labels, case_th, k, kmer2cluster)
         )
     results = pd.concat([ray.get(result_id) for result_id in result_ids])
+    results.to_csv(
+        os.path.join(output_dir, f'cluster_classification_k-{k}_kmer_clustering-{kmer2cluster is not None}_results.csv')
+    )
+
     return results
