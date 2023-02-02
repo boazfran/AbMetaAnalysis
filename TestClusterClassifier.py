@@ -96,7 +96,7 @@ def test_fold(
     positive_validation_features = pd.Series(positive_validation_features).astype(str)
     negative_validation_features = validation_feature_table.columns[
        validation_feature_table.loc[validation_labels.index[~validation_labels]].sum() > 0
-    ].colmns
+    ]
     negative_validation_features = pd.Series(negative_validation_features).astype(str)
 
     if (len(positive_validation_features) == 0) & (len(negative_validation_features) == 0):
