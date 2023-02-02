@@ -59,7 +59,7 @@ def test_fold(
     """
     results = pd.DataFrame(
         columns=[
-            'accuracy_score', 'recall_score', 'precision_score', 'f1-score', 'case_th', 'ctrl_th', 'dist_th', 'fs_mode',
+            'support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score', 'case_th', 'ctrl_th', 'dist_th', 'fs_mode',
             'k', 'kmer_clustering'
         ]
     )
@@ -97,6 +97,7 @@ def test_fold(
             ).loc[test_labels.index]
             predict_labels = rep_clf.predict(test_feature_table)
             results.loc[len(results), :] = [
+                sum(test_labels),
                 accuracy_score(test_labels, predict_labels),
                 recall_score(test_labels, predict_labels),
                 precision_score(test_labels, predict_labels, zero_division=0),
@@ -193,27 +194,27 @@ def test_rep_classifier(
 
 
 def save_results(
-    results:pd.DataFrame, subject_table:pd.DataFrame, base_name:str, output_dir:str
+    results: pd.DataFrame, subject_table:pd.DataFrame, output_dir: str, base_name: str
 ):
     """
     group the classification result data frames by hyper-parameters and saves frames as different files
     :param results: the data frame with the classification metrics
     :param subject_table: the data frame with the folds samples split information
-    :param base_name: prefix for the saved files
     :param output_dir: output directory to save the files
+    :param base_name: prefix for the saved files
     :return:
     """
-    hyper_parameters = results.head(0).drop(columns=['accuracy_score', 'recall_score', 'precision_score', 'f1-score']).columns
+    hyper_parameters = results.head(0).drop(columns=['support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score']).columns.tolist()
 
     for params, frame in results.groupby(hyper_parameters):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{k}-{frame[k].iloc[0]}' for k in params]) + '_results.csv'
+            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_results.csv'
         )
         frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
 
     for params, frame in subject_table.groupby(hyper_parameters):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{k}-{frame[k].iloc[0]}' for k in params]) + '_subject_table.csv'
+            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_subject_table.csv'
         )
         frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
 
