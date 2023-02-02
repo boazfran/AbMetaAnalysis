@@ -100,7 +100,7 @@ def add_cluster_id(
         max_cluster_id = res.max() + 1
     res = res.astype(int)
 
-    return airr_seq_df
+    return res
 
 
 # In[6]:
