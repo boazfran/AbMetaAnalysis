@@ -142,8 +142,8 @@ def test_fold(
 
 
 @ray.remote
-def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, k, kmer2cluster):
-    test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, k, kmer2cluster)
+def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster):
+    test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster)
 
 
 def test_cluster_classification(
@@ -154,6 +154,7 @@ def test_cluster_classification(
     n_splits: int = 10,
     n_repeats: int = 10,
     case_th: int = 2,
+    default_label: bool = True,
     k: int = 5,
     kmer2cluster: dict = None
 ):
@@ -167,6 +168,7 @@ def test_cluster_classification(
     :param output_dir: directory path to save the results 
     :param kmer2cluster: mapping of k-mer to k-mer cluster_id, if None identity mapping will be used
     :param case_th: threshold for which test the cluster classification
+    :param default_label: default label to use for sequence with no found features (sort of primitive bias)
     :param k: k by which to perform k-mers segmentation
     :return: data frame with the classification results, case/ctrl support, precision and recall
     """
@@ -179,7 +181,9 @@ def test_cluster_classification(
         validation_labels = labels.iloc[validation_index]
         train_labels = labels.drop(index=validation_labels.index)
         result_ids.append(
-            remote_test_fold.remote(sequence_df_id, train_labels, validation_labels, dist_mat_dir, case_th, k, kmer2cluster)
+            remote_test_fold.remote(
+                sequence_df_id, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster
+            )
         )
     results = pd.concat([ray.get(result_id) for result_id in result_ids])
     results.to_csv(
