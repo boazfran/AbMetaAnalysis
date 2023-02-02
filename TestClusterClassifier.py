@@ -32,7 +32,7 @@ if not ray.is_initialized():
         runtime_env={
             'working_dir': '/work/boazfr/dev/packages',
         },
-        object_store_memory=int(psutil.virtual_memory().total*0.5),
+        object_store_memory=int(psutil.virtual_memory().total*0.1),
         num_cpus=max(int(os.cpu_count()*0.75), 1)
     )
 
