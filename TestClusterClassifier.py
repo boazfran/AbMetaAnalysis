@@ -150,6 +150,7 @@ def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir,
 def test_cluster_classification(
     airr_seq_df: pd.DataFrame,
     labels: pd.Series,
+    dist_mat_dir: str,
     output_dir: str,
     n_splits: int = 10,
     n_repeats: int = 10,
@@ -164,6 +165,7 @@ def test_cluster_classification(
     :param n_splits: number of cross validation splits
     :param n_repeats: number of cross validation iterations
     :param dist_mat_dir: directory where the dataframe pairwise distance matrices are saved
+    :param output_dir: directory path to save the results 
     :param kmer2cluster: mapping of k-mer to k-mer cluster_id, if None identity mapping will be used
     :param case_th: threshold for which test the cluster classification
     :param k: k by which to perform k-mers segmentation
@@ -178,7 +180,7 @@ def test_cluster_classification(
         validation_labels = labels.iloc[validation_index]
         train_labels = labels.drop(index=validation_labels.index)
         result_ids.append(
-            test_fold.remote(sequence_df_id, validation_labels, train_labels, case_th, k, kmer2cluster)
+            remote_test_fold.remote(sequence_df_id, train_labels, validation_labels, dist_mat_dir, case_th, k, kmer2cluster)
         )
     results = pd.concat([ray.get(result_id) for result_id in result_ids])
     results.to_csv(
