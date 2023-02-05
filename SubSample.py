@@ -13,6 +13,41 @@ def define_clones(
     pass
 
 
+def subsample_n_clusters(
+    airr_seq_df, n_clusters, max_seq_per_cluster, cluster_id_col
+):
+    airr_seq_df = airr_seq_df.loc[airr_seq_df[cluster_id_col].notna()]
+    clusters_freq = airr_seq_df[cluster_id_col].value_counts(ascending=False)
+    clusters_freq.name = 'cluster_freq'
+    clusters_df = pd.DataFrame(clusters_freq)
+    del clusters_freq
+    clusters_freq_dup_cnt = airr_seq_df.groupby(cluster_id_col).apply(
+        lambda x: x.duplicate_count.astype(int).sum()
+    )
+    clusters_df.loc[
+        clusters_freq_dup_cnt.index, 'clusters_freq_dup_cnt'] = clusters_freq_dup_cnt.to_list()
+    del clusters_freq_dup_cnt
+    clusters_uniq_freq = airr_seq_df.groupby(cluster_id_col).apply(
+        lambda x: len(x.sequence.unique())
+    )
+    clusters_df.loc[clusters_uniq_freq.index, 'clusters_uniq_freq'] = clusters_uniq_freq.to_list()
+    del clusters_uniq_freq
+
+    clusters_df.sort_values(['cluster_freq', 'clusters_freq_dup_cnt'], ascending=False)
+    top_n_clusters = clusters_df.iloc[:min(n_clusters, len(clusters_df))].index
+    # from each cluster take the max_seq_per_cluster sequences with the most frequent junction_aa
+    airr_seq_df = airr_seq_df.loc[airr_seq_df[cluster_id_col].isin(top_n_clusters)].groupby(cluster_id_col).apply(
+        lambda x: x.groupby('junction_aa').apply(
+            lambda y: y.iloc[0].append(
+                pd.Series(len(y) / len(x), index=['junction_aa_freq_in_cluster']))
+        ).sort_values('junction_aa_freq_in_cluster', ascending=False).reset_index(
+            drop=True
+        ).iloc[:min(max_seq_per_cluster, len(clusters_df))]
+    ).reset_index(drop=True).copy(True)
+
+    return airr_seq_df
+
+
 def sample_by_n_clusters(
     metadata,
     input_dir: str,
@@ -51,33 +86,7 @@ def sample_by_n_clusters(
                 multi_sample_airr_seq_df = samples[(n_clusters, max_seq_per_cluster, cluster_id_col)]
             else:
                 multi_sample_airr_seq_df = pd.DataFrame()
-            clusters_freq = single_sample_airr_seq_df[cluster_id_col].value_counts(ascending=False)
-            clusters_freq.name = 'cluster_freq'
-            clusters_df = pd.DataFrame(clusters_freq)
-            del clusters_freq
-            clusters_freq_dup_cnt = single_sample_airr_seq_df.groupby(cluster_id_col).apply(
-                lambda x: x.duplicate_count.astype(int).sum()
-            )
-            clusters_df.loc[
-                clusters_freq_dup_cnt.index, 'clusters_freq_dup_cnt'] = clusters_freq_dup_cnt.to_list()
-            del clusters_freq_dup_cnt
-            clusters_uniq_freq = single_sample_airr_seq_df.groupby(cluster_id_col).apply(
-                lambda x: len(x.sequence.unique())
-            )
-            clusters_df.loc[clusters_uniq_freq.index, 'clusters_uniq_freq'] = clusters_uniq_freq.to_list()
-            del clusters_uniq_freq
-
-            clusters_df.sort_values(['cluster_freq', 'clusters_freq_dup_cnt'], ascending=False)
-            top_n_clusters = clusters_df.iloc[:min(n_clusters, len(clusters_df))].index
-            # from each cluster take the max_seq_per_cluster sequences with the most frequenct junction_aa
-            sampled_df = single_sample_airr_seq_df.loc[single_sample_airr_seq_df[cluster_id_col].isin(top_n_clusters)].groupby(cluster_id_col).apply(
-                lambda x: x.groupby('junction_aa').apply(
-                    lambda y: y.iloc[0].append(
-                        pd.Series(len(y) / len(x), index=['junction_aa_freq_in_cluster']))
-                ).sort_values('junction_aa_freq_in_cluster', ascending=False).reset_index(
-                    drop=True
-                ).iloc[:min(max_seq_per_cluster, len(clusters_df))]
-            ).reset_index(drop=True).copy(True)
+            sampled_df = subsample_n_clusters(single_sample_airr_seq_df, n_clusters, max_seq_per_cluster, cluster_id_col)
             sampled_df['subject_id'] = str(subject_id)
             sampled_df['study_id'] = str(study_id)
             samples[(n_clusters, max_seq_per_cluster, cluster_id_col)] = multi_sample_airr_seq_df.append(sampled_df)
@@ -98,7 +107,7 @@ def sample_by_n_sequences(
     input_dir: str,
     output_dir: str,
     n_sequences_values:list = [100],
-    force:bool = False
+    force: bool = False
 ):
     samples = pd.Series(
         dtype=object,
