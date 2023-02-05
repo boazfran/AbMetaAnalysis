@@ -20,7 +20,6 @@ import tempfile
 # MetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.Utilities import get_imgt_allele, load_airr_seq_df
 from MetaAnalysis.Defaults import default_random_state
 
 
