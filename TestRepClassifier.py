@@ -39,9 +39,8 @@ def test_fold(
     dist_th,
     case_th,
     ctrl_th,
-    feature_selection_mode_values: list,
-    k_values: list,
-    kmer2cluster_values: list
+    feature_selection_cfg_values,
+    force=False
 ):
     """
     train and test rep classifier fold
@@ -52,18 +51,16 @@ def test_fold(
     :param dist_th: normalized hamming distance cut off value for the hierarchical clustering
     :param case_th: number of shared case repertoire samples to exceed for cluster to be selected as feature
     :param ctrl_th: maximal number of shared ctrl repertoire samples for cluster to be selected as feature
-    :param feature_selection_mode_values: select feature only using thresholds (naive) or use cluster clf (similar)
-    :param k_values: k values for the k-mers segmentation, relevant only if similar is in feature_selection_mode_values
-    :param kmer2cluster_values: k-mers to k-mers cluster id mapping, relevant only if similar is in feature_selection_mode_values
+    :param feature_selection_cfg_values: list of dictionaries with feature selection configuration
     :return: (data frame with the fold classification results, data frame with the fold test samples)
     """
-    results = pd.DataFrame(
+    result_metrics = pd.DataFrame(
         columns=[
             'support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score', 'case_th', 'ctrl_th', 'dist_th', 'fs_mode',
             'k', 'kmer_clustering'
         ]
     )
-    subject_table = pd.DataFrame(index=test_labels.index.tolist() + ['case_th', 'ctrl_th', 'dist_th', 'fs_mode', 'k', 'kmer_clustering'])
+    result_folds = pd.DataFrame(index=test_labels.index.tolist() + ['case_th', 'ctrl_th', 'dist_th', 'fs_method', 'k', 'kmer_clustering'])
 
     train_airr_seq_df = filter_airr_seq_df_by_labels(airr_seq_df, train_labels)
     train_cluster_assignment = add_cluster_id(train_airr_seq_df, dist_mat_dir, dist_th=dist_th)
@@ -71,45 +68,44 @@ def test_fold(
     print('building feature table')
     train_feature_table = build_feature_table(train_airr_seq_df, train_cluster_assignment)
 
-    if len(k_values) == 0:
-        k_values = [-1]
-    for i, fs_mode in enumerate(feature_selection_mode_values):
-        k_l = [-1] if (fs_mode == "naive") else k_values
-        for j, k in enumerate(k_l):
-            kmer2cluster = kmer2cluster_values[j] if j < len(kmer2cluster_values) else None
-            print('creating rep classifier')
-            rep_clf = RepClassifier(
-                train_airr_seq_df, train_cluster_assignment, dist_th, case_th, ctrl_th, fs_mode, k, kmer2cluster
-            ).fit(
-                train_feature_table, train_labels
+    for i, fs_cfg in enumerate(feature_selection_cfg_values):
+        fs_method = fs_cfg['method']
+        k = fs_cfg['k'] if fs_cfg == 'similar' else np.nan
+        kmer2cluster = fs_cfg['kmer2cluster'] if (fs_cfg == 'similar') & ('kmer2cluster' in fs_cfg) else None
+
+        print('creating rep classifier')
+        rep_clf = RepClassifier(
+            train_airr_seq_df, train_cluster_assignment, dist_th, case_th, ctrl_th, fs_method, k, kmer2cluster
+        ).fit(
+            train_feature_table, train_labels
+        )
+        test_cluster_assignment = match_cluster_id(
+            train_airr_seq_df.loc[train_cluster_assignment.isin(rep_clf.selected_features)],
+            train_cluster_assignment[train_cluster_assignment.isin(rep_clf.selected_features)],
+            test_airr_sq_df,
+            dist_mat_dir,
+            dist_th
+        )
+        test_feature_table = test_airr_sq_df.groupby(['study_id', 'subject_id']).apply(
+            lambda frame: pd.Series(rep_clf.selected_features, index=rep_clf.selected_features).apply(
+                lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{cluster_id};') != -1) > 0
             )
-            test_cluster_assignment = match_cluster_id(
-                train_airr_seq_df.loc[train_cluster_assignment.isin(rep_clf.selected_features)],
-                train_cluster_assignment[train_cluster_assignment.isin(rep_clf.selected_features)],
-                test_airr_sq_df,
-                dist_mat_dir,
-                dist_th
-            )
-            test_feature_table = test_airr_sq_df.groupby(['study_id', 'subject_id']).apply(
-                lambda frame: pd.Series(rep_clf.selected_features, index=rep_clf.selected_features).apply(
-                    lambda cluster_id: sum(test_cluster_assignment[frame.index].str.find(f';{cluster_id};') != -1) > 0
-                )
-            ).loc[test_labels.index]
-            predict_labels = rep_clf.predict(test_feature_table)
-            results.loc[len(results), :] = [
-                sum(test_labels),
-                accuracy_score(test_labels, predict_labels),
-                recall_score(test_labels, predict_labels),
-                precision_score(test_labels, predict_labels, zero_division=0),
-                f1_score(test_labels, predict_labels, zero_division=0),
-                case_th,
-                ctrl_th,
-                dist_th,
-                fs_mode,
-                k,
-                kmer2cluster is not None
-            ]
-            print(results.iloc[-1])
+        ).loc[test_labels.index]
+        predict_labels = rep_clf.predict(test_feature_table)
+        result_metrics.loc[len(result_metrics), :] = [
+            sum(test_labels),
+            accuracy_score(test_labels, predict_labels),
+            recall_score(test_labels, predict_labels),
+            precision_score(test_labels, predict_labels, zero_division=0),
+            f1_score(test_labels, predict_labels, zero_division=0),
+            case_th,
+            ctrl_th,
+            dist_th,
+            fs_method,
+            k,
+            kmer2cluster is not None
+        ]
+        print(result_metrics.iloc[-1])
 
             # collect statistics on selected clusters and subjects classification
             subject_table.loc[

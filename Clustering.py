@@ -14,11 +14,14 @@ from changeo.Gene import getFamily, getGene, getAllele
 from sklearn.cluster import AgglomerativeClustering
 from scipy.spatial.distance import cdist, pdist
 from scipy.spatial.distance import squareform
+import subprocess
+import tempfile
 
 # MetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.Utilities import get_imgt_allele
+from MetaAnalysis.Utilities import get_imgt_allele, load_airr_seq_df
+from MetaAnalysis.Defaults import default_random_state
 
 
 def sequence_series_to_numeric_array(sequence_series: pd.Series) -> np.ndarray:
@@ -146,3 +149,62 @@ def match_cluster_id(
 
     return res
 
+
+def cluster_sample(
+    airr_seq_df_file_path: str,
+    max_sequences: int = 100000,
+    linkage='complete',
+    dist_th='0.0',
+    force=False
+):
+    try:
+        define_clones_path = subprocess.check_output('which DefineClones.py', shell=True).decode("utf-8").strip('\n')
+    except subprocess.CalledProcessError as exception:
+        print(exception.output)
+        print('Cannot find path to DefineClones.py')
+        return None
+
+    cluster_id_col = f'subject_cluster_id_{linkage}_linkage_{dist_th}'
+    for chunk in pd.read_csv(airr_seq_df_file_path, sep='\t', chunksize=1):
+        if not force and cluster_id_col in chunk.columns:
+            print(f'{cluster_id_col} already in {airr_seq_df_file_path} columns - skipping')
+            return
+        break
+
+    sample_airr_seq_df = pd.read_csv(airr_seq_df_file_path, sep='\t')
+    sample_airr_seq_df = sample_airr_seq_df.loc[sample_airr_seq_df.junction_aa.notna()]
+    sample_airr_seq_df = sample_airr_seq_df.loc[sample_airr_seq_df.junction_aa.str.len() >= 9]
+    if len(sample_airr_seq_df) > max_sequences:
+        sample_airr_seq_df = sample_airr_seq_df.sample(max_sequences, random_state=default_random_state)
+
+    db_file = os.path.join(os.path.dirname(airr_seq_df_file_path), tempfile.NamedTemporaryFile().name + '.tsv')
+    output_file = os.path.join(os.path.dirname(airr_seq_df_file_path), tempfile.NamedTemporaryFile().name + '.tsv')
+
+    sample_airr_seq_df.to_csv(db_file, sep='\t', index=False)
+    del sample_airr_seq_df
+    define_clone_flags = f"--model aa --link {linkage} --dist {dist_th}"
+    cmd = ' '.join(
+        ['nice -19', sys.executable, define_clones_path, '-d', db_file, '-o', output_file, '--nproc', str(os.cpu_count()), define_clone_flags]
+    )
+    try:
+        print(f'clustering file {airr_seq_df_file_path}: {cmd}')
+        subprocess.check_output(cmd, shell=True)
+        sample_airr_seq_df = pd.read_csv(airr_seq_df_file_path, sep='\t').set_index('sequence_id')
+        output = pd.read_csv(output_file, sep='\t').set_index('sequence_id')
+        sample_airr_seq_df.loc[output.index, cluster_id_col] = output.clone_id
+        to_csv_args = {'sep': '\t', 'index': False}
+        if airr_seq_df_file_path.endswith('.gz'):
+            to_csv_args['compression'] = 'gzip'
+        sample_airr_seq_df.reset_index().to_csv(
+            airr_seq_df_file_path,
+            **to_csv_args
+        )
+
+    except subprocess.CalledProcessError as exception:
+        print(exception.output)
+        print(f'file {airr_seq_df_file_path} clustering failed')
+
+    if os.path.isfile(db_file):
+        os.remove(db_file)
+    if os.path.isfile(output_file):
+        os.remove(output_file)
