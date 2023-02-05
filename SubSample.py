@@ -36,6 +36,8 @@ def sample_by_n_clusters(
                 f'top_{n_clusters}_{cluster_id_col.replace("subject_cluster_id_", "")}_clusters_max_seq_per_cluster_{max_seq_per_cluster}.tsv'
             )
             if not force and os.path.isfile(multi_sample_airr_seq_df_file_path):
+                if i == 0:
+                    print(f'file {multi_sample_airr_seq_df_file_path} already exists - skipping sampling')
                 continue
             if single_sample_airr_seq_df is None:
                 print(f'Sampling file {i + 1}: {sample.input_file}')
@@ -72,10 +74,10 @@ def sample_by_n_clusters(
                 lambda x: x.groupby('junction_aa').apply(
                     lambda y: y.iloc[0].append(
                         pd.Series(len(y) / len(x), index=['junction_aa_freq_in_cluster']))
-                ).sort_values('junction_aa_freq_in_cluster', ascending=False).reset_index(drop=True).iloc[
-                          :min(max_seq_per_cluster, len(clusters_df))
-                          ]
-            ).reset_index(drop=True)
+                ).sort_values('junction_aa_freq_in_cluster', ascending=False).reset_index(
+                    drop=True
+                ).iloc[:min(max_seq_per_cluster, len(clusters_df))]
+            ).reset_index(drop=True).copy(True)
             sampled_df['subject_id'] = str(subject_id)
             sampled_df['study_id'] = str(study_id)
             samples[(n_clusters, max_seq_per_cluster, cluster_id_col)] = multi_sample_airr_seq_df.append(sampled_df)
@@ -109,6 +111,8 @@ def sample_by_n_sequences(
                 output_dir, f'random_{n_sequences}_sequences_samples.tsv'
             )
             if not force and os.path.isfile(multi_sample_airr_seq_df_file_path):
+                if i == 0:
+                    print(f'file {multi_sample_airr_seq_df_file_path} already exists - skipping sampling')
                 continue
             elif single_sample_airr_seq_df is None:
                 print(f'Sampling file {i + 1}: {sample.input_file}')
@@ -119,7 +123,7 @@ def sample_by_n_sequences(
                     multi_sample_airr_seq_df = samples[n_sequences]
                 else:
                     multi_sample_airr_seq_df = pd.DataFrame()
-                sampled_df = single_sample_airr_seq_df.sample(min(len(single_sample_airr_seq_df), n_sequences), random_state=42)
+                sampled_df = single_sample_airr_seq_df.sample(min(len(single_sample_airr_seq_df), n_sequences), random_state=42).copy(True)
                 sampled_df['subject_id'] = str(subject_id)
                 sampled_df['study_id'] = str(study_id)
                 samples[n_sequences] = multi_sample_airr_seq_df.append(sampled_df)
