@@ -163,7 +163,7 @@ def cluster_sample(
         print('Cannot find path to DefineClones.py')
         return None
 
-    cluster_id_col = f'subject_cluster_id_{linkage}_linkage_{dist_th}'
+    cluster_id_col = f'subject_cluster_id_{linkage}_linkage_dist_{dist_th}'
     for chunk in pd.read_csv(airr_seq_df_file_path, sep='\t', chunksize=1):
         if not force and cluster_id_col in chunk.columns:
             print(f'{cluster_id_col} already in {airr_seq_df_file_path} columns - skipping')

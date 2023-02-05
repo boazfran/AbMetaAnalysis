@@ -54,7 +54,7 @@ def sample_by_n_clusters(
     output_dir: str,
     n_clusters_values: list = [100],
     max_seq_per_cluster_values: list = [1],
-    cluster_id_col_values: list = ['subject_cluster_id_complete_linkage_0.0'],
+    cluster_id_col_values: list = ['subject_cluster_id_complete_linkage_dist_0.0'],
     force: bool = False
 ):
     # to be more efficient we will go over the files only once and simultaneously do all subsampling
