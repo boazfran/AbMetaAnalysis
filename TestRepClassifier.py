@@ -157,14 +157,13 @@ def test_rep_classifier(
             fs_cfg['kmer2cluster'] = ray.put(fs_cfg['kmer2cluster'])
     result_ids = []
     if (n_splits == len(labels)) and (n_repeats == 1):
-        # leave one out mode
-        train_validation_splits = [
-            ([i], list(filter(lambda x: x != i, range(len(labels))))) for i in range(len(labels))
-        ]
+        # leave one out cross validation
+        train_validation_splits = [([i], list(filter(lambda x: x != i, range(len(labels))))) for i in range(len(labels))]
     else:
-        train_validation_splits = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=42)
-    for train_index, validation_index in train_validation_splits.split(labels, labels):
+        # stratified repeated cross validation
+        train_validation_splits = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=42).split(labels, labels)
 
+    for train_index, validation_index in train_validation_splits:
         validation_labels = labels[validation_index]
         train_labels = labels.drop(index=validation_labels.index)
         if train_only_labels is not None:
