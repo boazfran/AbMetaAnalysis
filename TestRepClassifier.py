@@ -18,6 +18,7 @@ from MetaAnalysis.RepClassifier import RepClassifier
 from MetaAnalysis.Utilities import filter_airr_seq_df_by_labels, build_feature_table, load_sampled_airr_seq_df
 from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
 from MetaAnalysis.SubSample import sample_by_n_clusters, sample_by_n_sequences
+from MetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
 
 
 if not ray.is_initialized():
@@ -26,8 +27,8 @@ if not ray.is_initialized():
         runtime_env={
             'working_dir': '/work/boazfr/dev/packages',
         },
-        object_store_memory=int(psutil.virtual_memory().total*0.1),
-        num_cpus=max(int(os.cpu_count()*0.75), 1)
+        object_store_memory=int(psutil.virtual_memory().total*ray_object_store_memory_percentage),
+        num_cpus=max(int(os.cpu_count()*ray_num_cpus_percentage), 1)
     )
 
 
@@ -40,7 +41,6 @@ def test_fold(
     case_th,
     ctrl_th,
     feature_selection_cfg_values,
-    force=False
 ):
     """
     train and test rep classifier fold
@@ -56,7 +56,7 @@ def test_fold(
     """
     result_metrics = pd.DataFrame(
         columns=[
-            'support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score', 'case_th', 'ctrl_th', 'dist_th', 'fs_mode',
+            'support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score', 'case_th', 'ctrl_th', 'dist_th', 'fs_method',
             'k', 'kmer_clustering'
         ]
     )

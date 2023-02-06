@@ -24,6 +24,7 @@ from MetaAnalysis.ClusterClassifier import create_cluster_classifier
 from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id
 from MetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels
 from MetaAnalysis.Defaults import default_random_state
+from MetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
 
 
 if not ray.is_initialized():
@@ -32,8 +33,8 @@ if not ray.is_initialized():
         runtime_env={
             'working_dir': '/work/boazfr/dev/packages',
         },
-        object_store_memory=int(psutil.virtual_memory().total*0.1),
-        num_cpus=max(int(os.cpu_count()*0.75), 1)
+        object_store_memory=int(psutil.virtual_memory().total*ray_object_store_memory_percentage),
+        num_cpus=max(int(os.cpu_count()*ray_num_cpus_percentage), 1)
     )
 
 

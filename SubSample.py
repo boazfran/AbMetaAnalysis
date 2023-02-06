@@ -3,16 +3,6 @@ import os
 from IPython.display import clear_output
 
 
-def define_clones(
-    airr_seq_df: pd.DataFrame,
-    airr_seq_df_file_path: str,
-    linkage: str = 'complete',
-    dist_th: float = 0.2,
-    max_sample_size: int = 100000
-):
-    pass
-
-
 def subsample_n_clusters(
     airr_seq_df, n_clusters, max_seq_per_cluster, cluster_id_col
 ):
