@@ -158,7 +158,7 @@ def test_rep_classifier(
     result_ids = []
     if (n_splits == len(labels)) and (n_repeats == 1):
         # leave one out cross validation
-        train_validation_splits = [([i], list(filter(lambda x: x != i, range(len(labels))))) for i in range(len(labels))]
+        train_validation_splits = [(list(filter(lambda x: x != i, range(len(labels)))), [i]) for i in range(len(labels))]
     else:
         # stratified repeated cross validation
         train_validation_splits = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=42).split(labels, labels)
@@ -199,17 +199,19 @@ def save_results(
     :param base_name: prefix for the saved files
     :return:
     """
-    hyper_parameters = result_metrics.head(0).drop(columns=['support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score']).columns.tolist()
+    hyper_parameters = result_metrics.head(0).drop(
+        columns=['support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score']
+    ).columns.tolist()
 
     for params, frame in result_metrics.groupby(hyper_parameters):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_results.csv'
+            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_result_metrics.csv'
         )
         frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
 
     for params, frame in result_folds.groupby(hyper_parameters):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_subject_table.csv'
+            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_result_folds.csv'
         )
         frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
 
