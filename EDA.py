@@ -185,8 +185,8 @@ def get_by_subj_motif_analysis_df(occur_df):
 
 
 def get_by_study_motif_analysis_df(by_subj_motif_df):
-    occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'] < 3].groupby('study_id').apply(lambda x: x.sum(axis=0))
-    prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'] < 3].groupby('study_id').apply(lambda x: x.mean(axis=0))
+    occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'].abs() < 3].groupby('study_id').apply(lambda x: x.sum(axis=0))
+    prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'].abs() < 3].groupby('study_id').apply(lambda x: x.mean(axis=0))
     zscore_df = (prop_df - prop_df.mean()).div(prop_df.std(axis=0), axis=1)
     occur_df.columns = pd.MultiIndex.from_product([['occur'], occur_df.columns])
     prop_df.columns = pd.MultiIndex.from_product([['prop'], prop_df.columns])
@@ -195,7 +195,7 @@ def get_by_study_motif_analysis_df(by_subj_motif_df):
 
 
 def get_by_label_motif_analysis_df(by_study_motif_df, label):
-    occur_df = by_study_motif_df['occur'][by_study_motif_df['zscore'] < 3].apply(lambda x: x.sum(axis=0))
+    occur_df = by_study_motif_df['occur'][by_study_motif_df['zscore'].abs() < 3].apply(lambda x: x.sum(axis=0))
     occur_df.name = 'occur'
     ci_df = pd.DataFrame(
         multinomial_proportions_confint(occur_df.values),
@@ -247,23 +247,52 @@ def get_motif_analysis(
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
 
-def read_eda(index: pd.MultiIndex, motifs_dir: str, base_name=None):
+def load_motifs_analysis(motifs_dir: str, base_name: str, motif: str):
     """
-    reads a set of motifs analysis files and stores them in a data frame
-    :param index: index for the motifs analysis file to load
-    :param motifs_dir: directory where the motifs files are saved
-    :param src_file: name suffix of the motif files
-    :return: a data frame of the loaded motif analysis files
+
+    :param motifs_dir:
+    :param base_name:
+    :param motif:
+    :return:
     """
-    eda_df = pd.Series(
-        list(map(lambda x: pd.read_csv(
-            os.path.join(
-                motifs_dir, '_'.join(x) + (('_' + base_name) if base_name is not None else '.csv')
-            )
-        ), index)),
-        index=index
-    )
-    return eda_df
+
+    by_subj_motif_df, by_study_motif_df, by_label_motif_df = None, None, None
+    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
+    if os.path.isfile(by_subj_motif_df_file_path):
+        by_subj_motif_df = pd.read_csv(by_subj_motif_df_file_path, header=[0, 1]).set_index(['label', 'study_id', 'subject_id'])
+    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
+    if os.path.isfile(by_study_motif_df_file_path):
+        by_study_motif_df = pd.read_csv(by_study_motif_df_file_path, header=[0, 1]).set_index(['label', 'study_id'])
+    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
+    if os.path.isfile(by_label_motif_df_file_path):
+        by_label_motif_df = pd.read_csv(by_label_motif_df_file_path, header=[0, 1]).set_index(['label'])
+
+    return by_subj_motif_df, by_study_motif_df, by_label_motif_df
+
+
+def save_motifs_analysis(
+    by_subj_motif_df: pd.DataFrame, by_study_motif_df: pd.DataFrame, by_label_motif_df: pd.DataFrame,
+    motifs_dir: str, base_name: str, motif: str
+):
+    """
+
+    :param by_subj_motif_df:
+    :param by_study_motif_df:
+    :param by_label_motif_df:
+    :param motifs_dir:
+    :param base_name:
+    :param motif:
+    :return:
+    """
+
+    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
+    by_subj_motif_df.to_csv(by_subj_motif_df_file_path)
+    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
+    by_study_motif_df.to_csv(by_study_motif_df_file_path)
+    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
+    by_label_motif_df.to_csv(by_label_motif_df_file_path)
+
+    return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
 
 def compare_to_reference_cdr3_df(
