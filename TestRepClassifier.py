@@ -103,14 +103,14 @@ def test_fold(
             dist_th,
             fs_method,
             k,
-            kmer2cluster is not None
+            True if kmer2cluster else None
         ]
         print(result_metrics.iloc[-1])
 
         # collect statistics on selected clusters and subjects classification
         result_folds.loc[
             np.array(test_labels.index.tolist() + ['case_th', 'ctrl_th', 'dist_th', 'fs_method', 'k', 'kmer_clustering'], dtype=object), i
-        ] = (test_labels == predict_labels).to_list() + [case_th, ctrl_th, dist_th, fs_method, k, kmer2cluster is not None]
+        ] = (test_labels == predict_labels).to_list() + [case_th, ctrl_th, dist_th, fs_method, k, True if kmer2cluster else None]
 
     return result_metrics, result_folds.transpose()
 
@@ -181,14 +181,14 @@ def test_rep_classifier(
 
     result_metrics, result_folds = pd.DataFrame(), pd.DataFrame()
     for result_id in result_ids:
-        result_metrics__itr, result_folds_itr = ray.get(result_id)
-        result_metrics = result_metrics.append(result_metrics__itr, ignore_index=True)
+        result_metrics_itr, result_folds_itr = ray.get(result_id)
+        result_metrics = result_metrics.append(result_metrics_itr, ignore_index=True)
         result_folds = result_folds.append(result_folds_itr, ignore_index=True)
 
     return result_metrics, result_folds
 
 
-def save_results(
+def save_rep_clf_results(
     result_metrics: pd.DataFrame, result_folds: pd.DataFrame, output_dir: str, base_name: str
 ):
     """
@@ -203,34 +203,42 @@ def save_results(
         columns=['support', 'accuracy_score', 'recall_score', 'precision_score', 'f1-score']
     ).columns.tolist()
 
-    for params, frame in result_metrics.groupby(hyper_parameters):
+    for params, frame in result_metrics.groupby(hyper_parameters, dropna=False):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_result_metrics.csv'
+            output_dir, '_'.join(
+                [base_name] + [f'{k}-{v}' for k, v in filter(lambda kv: not pd.isna(kv[1]), zip(hyper_parameters, params))]
+            ) + '_result_metrics.csv'
         )
         frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
 
-    for params, frame in result_folds.groupby(hyper_parameters):
+    for params, frame in result_folds.groupby(hyper_parameters, dropna=False):
         output_path = os.path.join(
-            output_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in zip(hyper_parameters, params)]) + '_result_folds.csv'
+            output_dir, '_'.join(
+                [base_name] + [f'{k}-{v}' for k, v in filter(lambda kv: not pd.isna(kv[1]), zip(hyper_parameters, params))]
+            ) + '_result_folds.csv'
         )
-        frame.drop(columns=hyper_parameters).to_csv(output_path, index=False)
+        frame = frame.drop(columns=hyper_parameters).transpose().reset_index()
+        frame.loc[:, ['study_id', 'subject_id']] = frame['index'].apply(lambda x: [x[0], x[1]]).to_list()
+        frame.drop(columns='index').to_csv(output_path, index=False)
 
 
-def load_results(
+def load_rep_clf_results(
     results_dir: str,
     base_name: str,
     hyper_parameters_dict
 ):
     result_metrics, result_folds = None, None
     results_file_path = os.path.join(
-        results_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in hyper_parameters_dict.items()]) + '_results.csv'
+        results_dir, '_'.join(
+            [base_name] + [f'{k}-{v}' for k, v in hyper_parameters_dict.items()]
+        ) + '_result_metrics.csv'
     )
     if os.path.isfile(results_file_path):
         result_metrics = pd.read_csv(results_file_path)
     folds_file_path = os.path.join(
-        results_dir, '_'.join([base_name] + [f'{key}-{val}' for key, val in hyper_parameters_dict.items()]) + '_folds.csv'
+        results_dir, '_'.join([base_name] + [f'{k}-{v}' for k, v in hyper_parameters_dict.items()]) + '_result_folds.csv'
     )
     if os.path.isfile(folds_file_path):
-        result_folds = pd.read_csv(folds_file_path)
+        result_folds = pd.read_csv(folds_file_path).set_index(['study_id', 'subject_id'])
 
     return result_metrics, result_folds
