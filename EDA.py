@@ -184,9 +184,9 @@ def get_by_subj_motif_analysis_df(occur_df):
     return pd.concat([occur_df, prop_df, zscore_df], axis=1)
 
 
-def get_by_study_motif_analysis_df(by_subj_motif_df):
-    occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'].abs() < 3].groupby('study_id').apply(lambda x: x.sum(axis=0))
-    prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'].abs() < 3].groupby('study_id').apply(lambda x: x.mean(axis=0))
+def get_by_study_motif_analysis_df(by_subj_motif_df, outlier_th=3):
+    occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.sum(axis=0))
+    prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.mean(axis=0))
     zscore_df = (prop_df - prop_df.mean()).div(prop_df.std(axis=0), axis=1)
     occur_df.columns = pd.MultiIndex.from_product([['occur'], occur_df.columns])
     prop_df.columns = pd.MultiIndex.from_product([['prop'], prop_df.columns])
@@ -194,11 +194,11 @@ def get_by_study_motif_analysis_df(by_subj_motif_df):
     return pd.concat([occur_df, prop_df, zscore_df], axis=1)
 
 
-def get_by_label_motif_analysis_df(by_study_motif_df, label):
-    occur_df = by_study_motif_df['occur'][by_study_motif_df['zscore'].abs() < 3].apply(lambda x: x.sum(axis=0))
+def get_by_label_motif_analysis_df(by_study_motif_df, label, outlier_th=3, alpha=0.05):
+    occur_df = by_study_motif_df['occur'][by_study_motif_df['zscore'].abs() < outlier_th].apply(lambda x: x.sum(axis=0))
     occur_df.name = 'occur'
     ci_df = pd.DataFrame(
-        multinomial_proportions_confint(occur_df.values),
+        multinomial_proportions_confint(occur_df.values, alpha=alpha),
         index=occur_df.index,
         columns=['lwr_ci', 'upr_ci'],
     )
@@ -212,13 +212,17 @@ def get_by_label_motif_analysis_df(by_study_motif_df, label):
 def get_motif_analysis(
     case_airr_seq_df: pd.DataFrame,
     ctrl_airr_seq_df: pd.DataFrame,
-    motif_occur_func
+    motif_occur_func,
+    outlier_th=3,
+    ci_alpha=0.05
 ):
     """
 
     :param case_airr_seq_df:
     :param ctrl_airr_seq_df:
     :param motif_occur_func:
+    :param outlier_th:
+    :param ci_alpha:
     :return:
     """
     case_motif_df = motif_occur_func(case_airr_seq_df)
@@ -232,8 +236,8 @@ def get_motif_analysis(
     by_subj_motif_df = case_motif_df.append(ctrl_motif_df)
     del case_motif_df, ctrl_motif_df
 
-    case_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CASE'])
-    ctrl_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CTRL'])
+    case_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CASE'], outlier_th=outlier_th)
+    ctrl_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CTRL'], outlier_th=outlier_th)
     case_motif_df = pd.concat({'CASE': case_motif_df}, names=['label'])
     ctrl_motif_df = pd.concat({'CTRL': ctrl_motif_df}, names=['label'])
     by_study_motif_df = case_motif_df.append(ctrl_motif_df)
@@ -241,8 +245,8 @@ def get_motif_analysis(
 
     by_label_motif_df = pd.concat(
         [
-            get_by_label_motif_analysis_df(by_study_motif_df.loc['CASE'], 'CASE'),
-            get_by_label_motif_analysis_df(by_study_motif_df.loc['CTRL'], 'CTRL')
+            get_by_label_motif_analysis_df(by_study_motif_df.loc['CASE'], 'CASE', outlier_th=outlier_th, alpha=ci_alpha),
+            get_by_label_motif_analysis_df(by_study_motif_df.loc['CTRL'], 'CTRL', outlier_th=outlier_th, alpha=ci_alpha)
         ], axis=1
     )
 
