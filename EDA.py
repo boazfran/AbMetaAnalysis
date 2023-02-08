@@ -204,7 +204,9 @@ def get_by_label_motif_analysis_df(by_study_motif_df, label):
     )
     ci_df['occur'] = occur_df
     ci_df['prop'] = ci_df.occur / ci_df.occur.sum()
-    return pd.concat({label: ci_df}, names=['label'])
+    ci_df.columns = pd.MultiIndex.from_product([[label], ci_df.columns])
+    ci_df.index.rename('motif', inplace=True)
+    return ci_df
 
 
 def get_motif_analysis(
@@ -255,17 +257,25 @@ def load_motifs_analysis(motifs_dir: str, base_name: str, motif: str):
     :param motif:
     :return:
     """
-
     by_subj_motif_df, by_study_motif_df, by_label_motif_df = None, None, None
     by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
     if os.path.isfile(by_subj_motif_df_file_path):
-        by_subj_motif_df = pd.read_csv(by_subj_motif_df_file_path, header=[0, 1]).set_index(['label', 'study_id', 'subject_id'])
+        by_subj_motif_df = pd.read_csv(by_subj_motif_df_file_path, header=[0, 1]).set_index(
+            [('label', 'Unnamed: 0_level_1'), ('study_id', 'Unnamed: 1_level_1'), ('subject_id', 'Unnamed: 2_level_1')]
+        )
+        by_subj_motif_df.index.rename(['label', 'study_id', 'subject_id'], inplace=True)
     by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
     if os.path.isfile(by_study_motif_df_file_path):
-        by_study_motif_df = pd.read_csv(by_study_motif_df_file_path, header=[0, 1]).set_index(['label', 'study_id'])
+        by_study_motif_df = pd.read_csv(by_study_motif_df_file_path, header=[0, 1]).set_index(
+            [('label', 'Unnamed: 0_level_1'), ('study_id', 'Unnamed: 1_level_1')]
+        )
+        by_study_motif_df.index.rename(['label', 'study_id'], inplace=True)
     by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
     if os.path.isfile(by_label_motif_df_file_path):
-        by_label_motif_df = pd.read_csv(by_label_motif_df_file_path, header=[0, 1]).set_index(['label'])
+        by_label_motif_df = pd.read_csv(by_label_motif_df_file_path, header=[0, 1]).set_index(
+            [('motif', 'Unnamed: 0_level_1')]
+        )
+        by_label_motif_df.index.rename('motif', inplace=True)
 
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
@@ -286,11 +296,11 @@ def save_motifs_analysis(
     """
 
     by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
-    by_subj_motif_df.to_csv(by_subj_motif_df_file_path)
+    by_subj_motif_df.reset_index().to_csv(by_subj_motif_df_file_path, index=False)
     by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
-    by_study_motif_df.to_csv(by_study_motif_df_file_path)
+    by_study_motif_df.reset_index().to_csv(by_study_motif_df_file_path, index=False)
     by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
-    by_label_motif_df.to_csv(by_label_motif_df_file_path)
+    by_label_motif_df.reset_index().to_csv(by_label_motif_df_file_path, index=False)
 
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
