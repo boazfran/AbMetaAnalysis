@@ -12,13 +12,13 @@ import os
 import ray
 import psutil
 
-# MetaAnalysis Imports
+# AbMetaAnalysis Imports
 sys.path.append('/work/boazfr/dev/packages/')
-from MetaAnalysis.RepClassifier import RepClassifier
-from MetaAnalysis.Utilities import filter_airr_seq_df_by_labels, build_feature_table, load_sampled_airr_seq_df
-from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
-from MetaAnalysis.SubSample import sample_by_n_clusters, sample_by_n_sequences
-from MetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
+from AbMetaAnalysis.RepClassifier import RepClassifier
+from AbMetaAnalysis.Utilities import filter_airr_seq_df_by_labels, build_feature_table, load_sampled_airr_seq_df
+from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
+from AbMetaAnalysis.SubSample import sample_by_n_clusters, sample_by_n_sequences
+from AbMetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
 
 
 if not ray.is_initialized():

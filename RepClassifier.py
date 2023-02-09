@@ -8,13 +8,13 @@ import os
 import numpy as np
 
 
-# MetaAnalysis imports
+# AbMetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
-from MetaAnalysis.Utilities import build_feature_table
-from MetaAnalysis.EDA import mannwhitneyu_test
-from MetaAnalysis.ClusterClassifier import create_cluster_classifier
+from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
+from AbMetaAnalysis.Utilities import build_feature_table
+from AbMetaAnalysis.EDA import mannwhitneyu_test
+from AbMetaAnalysis.ClusterClassifier import create_cluster_classifier
 
 
 def select_features(

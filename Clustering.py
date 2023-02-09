@@ -17,10 +17,10 @@ from scipy.spatial.distance import squareform
 import subprocess
 import tempfile
 
-# MetaAnalysis imports
+# AbMetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.Defaults import default_random_state
+from AbMetaAnalysis.Defaults import default_random_state
 
 
 def sequence_series_to_numeric_array(sequence_series: pd.Series) -> np.ndarray:
@@ -89,7 +89,9 @@ def add_cluster_id(
         dist_map_folder = os.path.join(dist_mat_dir, v_group, j_group, junction_aa_length)
         dist_df = pd.read_csv(
             os.path.join(dist_map_folder, 'pdist.tsv.gz'), sep='\t'
-        ).set_index(['id']).loc[frame.index, frame.index]
+        ).set_index('id').loc[frame.index, frame.index]
+        if dist_df.shape[0] != dist_df.shape[1]:
+            breakpoint()
         if dist_df.shape[0] == 1:
             res.loc[frame.index] = max_cluster_id
         else:

@@ -15,12 +15,12 @@ from sklearn.naive_bayes import BernoulliNB
 from statsmodels.sandbox.stats.multicomp import multipletests
 from statsmodels.stats.proportion import multinomial_proportions_confint
 
-# MetaAnalysis imports
+# AbMetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id
-from MetaAnalysis.Utilities import build_feature_table
-from MetaAnalysis.EDA import mannwhitneyu_test
+from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id
+from AbMetaAnalysis.Utilities import build_feature_table
+from AbMetaAnalysis.EDA import mannwhitneyu_test
 
 
 class ClusterClassifier:
@@ -142,9 +142,11 @@ def create_cluster_classifier(
 
     print('selecting v_gene features')
     case_v_gene = pd.DataFrame(
-        case_sequence_df.groupby(['study_id', 'subject_id']).v_gene.value_counts(normalize=True)).transpose()
+        case_sequence_df.groupby(['study_id', 'subject_id']).v_gene.value_counts(normalize=True)
+    ).transpose()
     ctrl_v_gene = pd.DataFrame(
-        ctrl_sequence_df.groupby(['study_id', 'subject_id']).v_gene.value_counts(normalize=True)).transpose()
+        ctrl_sequence_df.groupby(['study_id', 'subject_id']).v_gene.value_counts(normalize=True)
+    ).transpose()
     case_v_gene = case_v_gene.append(pd.DataFrame(columns=ctrl_v_gene.columns)).fillna(0)
     ctrl_v_gene = ctrl_v_gene.append(pd.DataFrame(columns=case_v_gene.columns)).fillna(0)
     case_v_gene = case_v_gene.transpose().rename(columns={'v_gene': 'Freq'}).reset_index().sort_values('v_gene')

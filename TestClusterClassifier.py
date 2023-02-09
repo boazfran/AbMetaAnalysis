@@ -17,14 +17,14 @@ from sklearn.metrics import recall_score, precision_score
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 
-# MetaAnalysis imports
+# AbMetaAnalysis imports
 import sys
 sys.path.append('/work/boazfr/dev/packages')
-from MetaAnalysis.ClusterClassifier import create_cluster_classifier
-from MetaAnalysis.Clustering import add_cluster_id, match_cluster_id
-from MetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels
-from MetaAnalysis.Defaults import default_random_state
-from MetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
+from AbMetaAnalysis.ClusterClassifier import create_cluster_classifier
+from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id
+from AbMetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels
+from AbMetaAnalysis.Defaults import default_random_state
+from AbMetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_memory_percentage
 
 
 if not ray.is_initialized():
@@ -94,7 +94,7 @@ def test_fold(
 
     positive_test_features = test_feature_table.columns[
         (
-            (test_feature_table.loc[test_labels.index[test_labels]].sum() > 1) &
+            (test_feature_table.loc[test_labels.index[test_labels]].sum() > 0) &
             (test_feature_table.loc[test_labels.index[~test_labels]].sum() == 0)
         )
     ]
@@ -130,32 +130,29 @@ def test_fold(
         (lambda x: x) if kmer2cluster is None else (lambda x: kmer2cluster[x])
     )
     feature_labels = pd.Series(True, index=positive_test_features).append(
-        pd.Series(False, index=negative_test_features))
+        pd.Series(False, index=negative_test_features)
+    )
     predict_labels = cluster_clf.predict(positive_test_samples.append(negative_test_samples)).loc[feature_labels.index]
     res = pd.DataFrame(
         [
             sum(feature_labels),
             sum(~feature_labels),
-            recall_score(feature_labels, predict_labels, pos_label=True, zero_division=0) if sum(
-                feature_labels) else np.nan,
-            recall_score(feature_labels, predict_labels, pos_label=False, zero_division=0) if sum(
-                ~feature_labels) else np.nan,
-            precision_score(feature_labels, predict_labels, pos_label=True, zero_division=0) if sum(
-                feature_labels) else np.nan,
-            precision_score(feature_labels, predict_labels, pos_label=False, zero_division=0) if sum(
-                ~feature_labels) else np.nan,
+            recall_score(feature_labels, predict_labels, pos_label=True, zero_division=0) if sum(feature_labels) else np.nan,
+            recall_score(feature_labels, predict_labels, pos_label=False, zero_division=0) if sum(~feature_labels) else np.nan,
+            precision_score(feature_labels, predict_labels, pos_label=True, zero_division=0) if sum(feature_labels) else np.nan,
+            precision_score(feature_labels, predict_labels, pos_label=False, zero_division=0) if sum(~feature_labels) else np.nan,
         ],
         index=['case_support', 'control_support', 'case_recall', 'ctrl_recall', 'case_precision', 'ctrl_precision']
     ).transpose()
 
-    print(res)
+    print(res.iloc[0])
 
     return res
 
 
 @ray.remote(max_retries=0)
 def remote_test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster):
-    test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster)
+    return test_fold(sequence_df, train_labels, validation_labels, dist_mat_dir, case_th, default_label, k, kmer2cluster)
 
 
 def test_cluster_classification(
