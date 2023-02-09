@@ -205,7 +205,8 @@ def get_by_label_motif_analysis_df(by_study_motif_df, label, outlier_th=3, alpha
     ci_df['occur'] = occur_df
     ci_df['prop'] = ci_df.occur / ci_df.occur.sum()
     ci_df.columns = pd.MultiIndex.from_product([[label], ci_df.columns])
-    ci_df.index.rename('motif', inplace=True)
+    ci_df = ci_df.transpose()
+    ci_df.index.rename(['label', 'metric'], inplace=True)
     return ci_df
 
 
@@ -247,7 +248,7 @@ def get_motif_analysis(
         [
             get_by_label_motif_analysis_df(by_study_motif_df.loc['CASE'], 'CASE', outlier_th=outlier_th, alpha=ci_alpha),
             get_by_label_motif_analysis_df(by_study_motif_df.loc['CTRL'], 'CTRL', outlier_th=outlier_th, alpha=ci_alpha)
-        ], axis=1
+        ], axis=0
     )
 
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
@@ -262,24 +263,21 @@ def load_motifs_analysis(motifs_dir: str, base_name: str, motif: str):
     :return:
     """
     by_subj_motif_df, by_study_motif_df, by_label_motif_df = None, None, None
-    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
+    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv.gz']))
     if os.path.isfile(by_subj_motif_df_file_path):
         by_subj_motif_df = pd.read_csv(by_subj_motif_df_file_path, header=[0, 1]).set_index(
             [('label', 'Unnamed: 0_level_1'), ('study_id', 'Unnamed: 1_level_1'), ('subject_id', 'Unnamed: 2_level_1')]
         )
         by_subj_motif_df.index.rename(['label', 'study_id', 'subject_id'], inplace=True)
-    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
+    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv.gz']))
     if os.path.isfile(by_study_motif_df_file_path):
         by_study_motif_df = pd.read_csv(by_study_motif_df_file_path, header=[0, 1]).set_index(
             [('label', 'Unnamed: 0_level_1'), ('study_id', 'Unnamed: 1_level_1')]
         )
         by_study_motif_df.index.rename(['label', 'study_id'], inplace=True)
-    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
+    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv.gz']))
     if os.path.isfile(by_label_motif_df_file_path):
-        by_label_motif_df = pd.read_csv(by_label_motif_df_file_path, header=[0, 1]).set_index(
-            [('motif', 'Unnamed: 0_level_1')]
-        )
-        by_label_motif_df.index.rename('motif', inplace=True)
+        by_label_motif_df = pd.read_csv(by_label_motif_df_file_path).set_index(['label', 'metric'])
 
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
@@ -299,12 +297,12 @@ def save_motifs_analysis(
     :return:
     """
 
-    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv']))
-    by_subj_motif_df.reset_index().to_csv(by_subj_motif_df_file_path, index=False)
-    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv']))
-    by_study_motif_df.reset_index().to_csv(by_study_motif_df_file_path, index=False)
-    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv']))
-    by_label_motif_df.reset_index().to_csv(by_label_motif_df_file_path, index=False)
+    by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv.gz']))
+    by_subj_motif_df.reset_index().to_csv(by_subj_motif_df_file_path, index=False, compression='gzip')
+    by_study_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_study', motif + '.csv.gz']))
+    by_study_motif_df.reset_index().to_csv(by_study_motif_df_file_path, index=False, compression='gzip')
+    by_label_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_label', motif + '.csv.gz']))
+    by_label_motif_df.to_csv(by_label_motif_df_file_path, compression='gzip')
 
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
