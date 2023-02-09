@@ -307,60 +307,60 @@ def save_motifs_analysis(
     return by_subj_motif_df, by_study_motif_df, by_label_motif_df
 
 
-def compare_to_reference_cdr3_df(
+def compare_to_reference_df(
     case_airr_seq_df: pd.DataFrame,
     ctrl_airr_seq_df: pd.DataFrame,
     ref_airr_seq_df: pd.DataFrame,
-    min_dist_th=0.1
+    min_dist_th:float=0.1
 ):
     """
 
     :param case_airr_seq_df:
     :param ctrl_airr_seq_df:
     :param ref_airr_seq_df:
-    :param min_dist_th:
+    :param min_dist_th: normalized hamming distance threshold to consider two junction_aa sequences as a match
     :return:
     """
     case_matched_sequences = pd.DataFrame()
     ctrl_matched_sequences = pd.DataFrame()
     min_dist_df = pd.DataFrame(
         columns=pd.MultiIndex.from_product([['CASE', 'CTRL'], ['support', 'absolute', 'percentage']]),
-        index=case_airr_seq_df.cdr3_aa.str.len().sort_values().unique()
+        index=case_airr_seq_df.junction_aa.str.len().sort_values().unique()
     )
-    for cdr3_aa_length in case_airr_seq_df.cdr3_aa.str.len().sort_values().unique():
-        if sum(ref_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length) == 0:
+    for junction_aa_length in case_airr_seq_df.junction_aa.str.len().sort_values().unique():
+        if sum(ref_airr_seq_df.junction_aa.str.len() == junction_aa_length) == 0:
             continue
         dist_mat = cdist(
-            sequence_series_to_numeric_array(case_airr_seq_df.cdr3_aa.loc[case_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length]),
-            sequence_series_to_numeric_array(ref_airr_seq_df.cdr3_aa.loc[ref_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length]),
+            sequence_series_to_numeric_array(case_airr_seq_df.junction_aa.loc[case_airr_seq_df.junction_aa.str.len() == junction_aa_length]),
+            sequence_series_to_numeric_array(ref_airr_seq_df.junction_aa.loc[ref_airr_seq_df.junction_aa.str.len() == junction_aa_length]),
             "hamming"
         )
         min_dist = np.min(dist_mat, axis=1)
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'absolute')] = sum(min_dist <= min_dist_th)
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'percentage')] = sum(min_dist <= min_dist_th) / sum(
-            case_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length
+        min_dist_df.loc[junction_aa_length, ('CASE', 'absolute')] = sum(min_dist <= min_dist_th)
+        min_dist_df.loc[junction_aa_length, ('CASE', 'percentage')] = sum(min_dist <= min_dist_th) / sum(
+            case_airr_seq_df.junction_aa.str.len() == junction_aa_length
         )
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'support')] = sum(case_airr_seq_df.str.len() == cdr3_aa_length)
+        min_dist_df.loc[junction_aa_length, ('CASE', 'support')] = sum(case_airr_seq_df.junction_aa.str.len() == junction_aa_length)
         case_matched_sequences = case_matched_sequences.append(
-            case_airr_seq_df.loc[case_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length].loc[min_dist <= min_dist_th]
+            case_airr_seq_df.loc[case_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
         )
 
-    for cdr3_aa_length in ctrl_airr_seq_df.cdr3_aa.str.len().sort_values().unique():
-        if sum(ref_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length) == 0:
+    for junction_aa_length in ctrl_airr_seq_df.junction_aa.str.len().sort_values().unique():
+        if sum(ref_airr_seq_df.junction_aa.str.len() == junction_aa_length) == 0:
             continue
         dist_mat = cdist(
-            sequence_series_to_numeric_array(ctrl_airr_seq_df.cdr3_aa.loc[ctrl_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length]),
-            sequence_series_to_numeric_array(ref_airr_seq_df.cdr3_aa.loc[ref_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length]),
+            sequence_series_to_numeric_array(ctrl_airr_seq_df.junction_aa.loc[ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length]),
+            sequence_series_to_numeric_array(ref_airr_seq_df.junction_aa.loc[ref_airr_seq_df.junction_aa.str.len() == junction_aa_length]),
             "hamming"
         )
         min_dist = np.min(dist_mat, axis=1)
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'absolute')] = sum(min_dist <= min_dist_th)
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'percentage')] = sum(min_dist <= min_dist_th) / sum(
-            ctrl_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length
+        min_dist_df.loc[junction_aa_length, ('CTRL', 'absolute')] = sum(min_dist <= min_dist_th)
+        min_dist_df.loc[junction_aa_length, ('CTRL', 'percentage')] = sum(min_dist <= min_dist_th) / sum(
+            ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length
         )
-        min_dist_df.loc[cdr3_aa_length, ('CASE', 'support')] = sum(ctrl_airr_seq_df.str.len() == cdr3_aa_length)
+        min_dist_df.loc[junction_aa_length, ('CTRL', 'support')] = sum(ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length)
         ctrl_matched_sequences = ctrl_matched_sequences.append(
-            ctrl_airr_seq_df.loc[ctrl_airr_seq_df.cdr3_aa.str.len() == cdr3_aa_length].loc[min_dist <= min_dist_th]
+            ctrl_airr_seq_df.loc[ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
         )
 
     min_dist_df = min_dist_df.loc[(min_dist_df[('CASE', 'absolute')] > 0) | (min_dist_df[('CTRL', 'absolute')] > 0)]
