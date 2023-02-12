@@ -170,7 +170,7 @@ def test_rep_classifier(
             train_labels = train_labels.append(train_only_labels)
         for case_th in case_th_values:
             for ctrl_th in ctrl_th_values:
-                if ctrl_th >= case_th:
+                if ctrl_th > case_th:
                     continue
                 for dist_th in dist_th_values:
                     result_ids.append(
