@@ -13,6 +13,7 @@ import seaborn as sns
 import math
 from matplotlib.lines import Line2D
 from changeo.Gene import getFamily
+import typing
 
 
 def plot_compare_to_reference_cdr3_df(df, output_file):
