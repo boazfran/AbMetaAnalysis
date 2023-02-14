@@ -187,7 +187,7 @@ def get_by_subj_motif_analysis_df(occur_df):
 def get_by_study_motif_analysis_df(by_subj_motif_df, outlier_th=3):
     occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.sum(axis=0))
     prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.mean(axis=0))
-    zscore_df = (prop_df - prop_df.mean()).div(prop_df.std(axis=0), axis=1)
+    zscore_df = (prop_df - prop_df.mean()).div(prop_df.std(axis=0), axis=1).fillna(0)
     occur_df.columns = pd.MultiIndex.from_product([['occur'], occur_df.columns])
     prop_df.columns = pd.MultiIndex.from_product([['prop'], prop_df.columns])
     zscore_df.columns = pd.MultiIndex.from_product([['zscore'], zscore_df.columns])
@@ -373,17 +373,17 @@ def compare_to_reference_df(
     return min_dist_df, case_matched_sequences, ctrl_matched_sequences
 
 
-def get_case_control_sequence_df(airr_seq_df, labels, dist_mat_dir, dist_th):
+def get_case_control_sequence_df(airr_seq_df, labels, dist_mat_dir, dist_th, case_th=0, ctrl_th=0):
 
     airr_seq_df['cluster_id'] = add_cluster_id(
         airr_seq_df, dist_mat_dir, dist_th
     )
     feature_table = build_feature_table(airr_seq_df, airr_seq_df['cluster_id'])
     case_features = feature_table.columns[
-        (feature_table.loc[labels.index[labels]].sum() > 0) & (feature_table.loc[labels.index[~labels]].sum() == 0)
+        (feature_table.loc[labels.index[labels]].sum() > case_th) & (feature_table.loc[labels.index[~labels]].sum() == 0)
     ]
     ctrl_features = feature_table.columns[
-        (feature_table.loc[labels.index[~labels]].sum() > 0) & (feature_table.loc[labels.index[labels]].sum() == 0)
+        (feature_table.loc[labels.index[~labels]].sum() > ctrl_th) & (feature_table.loc[labels.index[labels]].sum() == 0)
     ]
     case_airr_seq_df = airr_seq_df.loc[airr_seq_df.cluster_id.isin(case_features)]
     ctrl_airr_seq_df = airr_seq_df.loc[airr_seq_df.cluster_id.isin(ctrl_features)]
