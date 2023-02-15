@@ -116,10 +116,10 @@ def boxplot_features(
         )
         case_positions = np.arange(max(ctrl_max, case_max) / 2 - case_max / 2 * 0.3, 100, 0.3)
         ax.scatter(
-            x=case_positions[:len(by_study_df.loc['CASE'])],
+            x=case_positions[:sum(by_study_df.loc['CASE', ('zscore', col)].abs() < outlier_th)],
             y=by_study_df.loc['CASE', (y, col)].loc[
                 by_study_df.loc['CASE', ('zscore', col)].abs() < outlier_th
-                ],
+            ],
             color=colors[:case_max + 1]
         )
         ax.boxplot(
@@ -131,10 +131,10 @@ def boxplot_features(
         )
         ctrl_positions = np.arange(2 + max(ctrl_max, case_max) * 1.5 - ctrl_max / 2 * 0.3, 100, 0.3)
         ax.scatter(
-            x=ctrl_positions[:len(by_study_df.loc['CTRL'])],
+            x=ctrl_positions[:sum(by_study_df.loc['CTRL', ('zscore', col)].abs() < outlier_th)],
             y=by_study_df.loc['CTRL', (y, col)].loc[
                 by_study_df.loc['CTRL', ('zscore', col)].abs() < outlier_th
-                ],
+            ],
             color=colors[case_max + 1 + case_ctrl_color_diff: case_max + 1 + case_ctrl_color_diff + ctrl_max + 1]
         )
         ax.grid(axis='y', linestyle='--', linewidth=1)
