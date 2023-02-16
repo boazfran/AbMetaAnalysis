@@ -16,17 +16,17 @@ from changeo.Gene import getFamily
 import typing
 
 
-def plot_compare_to_reference_cdr3_df(df, output_file):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+def plot_compare_to_reference_cdr3_df(df, figsize=(15, 10)):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, sharex=True)
 
-    ax1.bar(range(0, len(df) * 2, 2), df['CASE'].absloute)
-    ax1.bar(range(1, len(df) * 2, 2), df['CTRL'].absloute)
+    ax1.bar(range(0, len(df) * 2, 2), df['CASE'].absolute)
+    ax1.bar(range(1, len(df) * 2, 2), df['CTRL'].absolute)
     ax1.set_xticks([])
     ax1.set_ylabel('Matches', fontsize=20)
     ax1.legend(labels=['CASE', 'CTRL'], fontsize=20)
     ax1.set_yticks(
-        range(df.xs('absloute', level=1, axis=1).max().max() + 1),
-        range(df.xs('absloute', level=1, axis=1).max().max() + 1),
+        range(df.xs('absolute', level=1, axis=1).max().max() + 1),
+        range(df.xs('absolute', level=1, axis=1).max().max() + 1),
         fontsize=20
     )
     ax1.grid(axis='y')
@@ -41,8 +41,7 @@ def plot_compare_to_reference_cdr3_df(df, output_file):
         range(0, math.ceil(df.xs('support', level=1, axis=1).max().max() / 200) * 200, 200),
         fontsize=20
     )
-    ax2.grid(axis='y')
-    fig.savefig(output_file)
+    ax2.grid(axis='y', ls='--')
 
 
 def boxplot_features(
