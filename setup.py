@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='AbMetaAnalysis',
-    version='1.0.2',
+    version='1.0.3',
     packages=find_packages(),
     url='https://github.com/boazfran/AbMetaAnalysis',
     license='MIT (X11)',
@@ -10,7 +10,7 @@ setup(
     author_email='boazfr@gmail.com',
     description='Package for Meta analysis of BCR repertoires ',
     install_requires=[
-        'changeo>=1.0.3',
+        'changeo>=1.0.2',
         'ipython>=8.10.0',
         'matplotlib>=3.6.2',
         'numpy>=1.24.1',
