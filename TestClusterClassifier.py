@@ -18,8 +18,6 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 
 # AbMetaAnalysis imports
-import sys
-sys.path.append('/work/boazfr/dev/packages')
 from AbMetaAnalysis.ClusterClassifier import create_cluster_classifier
 from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id
 from AbMetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels

@@ -9,12 +9,9 @@ import numpy as np
 
 
 # AbMetaAnalysis imports
-import sys
-sys.path.append('/work/boazfr/dev/packages')
 from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
 from AbMetaAnalysis.Utilities import build_feature_table
 from AbMetaAnalysis.EDA import mannwhitneyu_test
-from AbMetaAnalysis.ClusterClassifier import create_cluster_classifier
 
 
 def select_features(
@@ -28,34 +25,7 @@ def select_features(
     k: int = 5,
     kmer2cluster: dict = None
 ) -> np.ndarray:
-    if mode == 'similar':
-        features = feature_table.columns[
-            (
-                    (feature_table.loc[train_labels.index[train_labels]].sum() > case_th) &
-                    (feature_table.loc[train_labels.index[~train_labels]].sum() <= ctrl_th)
-            )
-        ]
-        candidate_features = feature_table.columns[
-            (
-                    (feature_table.loc[train_labels.index[train_labels]].sum() == case_th) &
-                    (feature_table.loc[train_labels.index[~train_labels]].sum() <= ctrl_th)
-            )
-        ]
-        default_label = sum(
-            (feature_table.loc[train_labels.index[train_labels]].sum() > case_th) &
-            (feature_table.loc[train_labels.index[~train_labels]].sum() <= ctrl_th)
-        ) >= 1.5 * sum(
-            (feature_table.sum() > case_th) &
-            (feature_table.loc[train_labels.index[~train_labels]].sum() > ctrl_th)
-        )
-        cluster_clf = create_cluster_classifier(
-            airr_seq_df, cluster_assignment, feature_table, train_labels, default_label, k, kmer2cluster
-        )
-        candidate_airr_seq_df = airr_seq_df.loc[cluster_assignment.isin(candidate_features)].copy()
-        candidate_airr_seq_df['cluster_id'] = cluster_assignment[cluster_assignment.isin(candidate_features)]
-        predicted_features = cluster_clf.predict(candidate_airr_seq_df)
-        features = np.concat([features, predicted_features.index[predicted_features]])
-    elif mode == 'naive':
+    if mode == 'naive':
         features = feature_table.columns[
             (
                     (feature_table.loc[train_labels.index[train_labels]].sum() > case_th) &

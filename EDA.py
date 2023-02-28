@@ -22,8 +22,6 @@ from scipy import sparse as sp
 
 
 # AbMetaAnalysis imports
-import sys
-sys.path.append('/work/boazfr/dev/packages')
 from AbMetaAnalysis.Utilities import build_feature_table, filter_airr_seq_df_by_labels, get_imgt_allele, load_sampled_airr_seq_df
 from AbMetaAnalysis.Clustering import add_cluster_id, sequence_series_to_numeric_array, add_cluster_id, save_distance_matrices
 
