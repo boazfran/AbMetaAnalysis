@@ -9,14 +9,20 @@ __author__ = 'Boaz Frankel'
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 import seaborn as sns
 import math
-from matplotlib.lines import Line2D
 from changeo.Gene import getFamily
 import typing
 
 
 def plot_compare_to_reference_cdr3_df(df, figsize=(15, 10)):
+    """
+    plot the results of compare_to_reference_df
+    :param df: output data frame of compare_to_reference_df
+    :param figsize: size of the figures
+    :return:
+    """
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, sharex=True)
 
     ax1.bar(range(0, len(df) * 2, 2), df['CASE'].absolute)
@@ -30,6 +36,7 @@ def plot_compare_to_reference_cdr3_df(df, figsize=(15, 10)):
         fontsize=20
     )
     ax1.grid(axis='y')
+    ax1.set_title('(A)', fontsize=20, loc='left')
 
     ax2.bar(range(0, len(df) * 2, 2), df['CASE'].support)
     ax2.bar(range(1, len(df) * 2, 2), df['CTRL'].support)
@@ -42,6 +49,7 @@ def plot_compare_to_reference_cdr3_df(df, figsize=(15, 10)):
         fontsize=20
     )
     ax2.grid(axis='y', ls='--')
+    ax2.set_title('(B)', fontsize=20, loc='left')
 
 
 def boxplot_features(
@@ -57,6 +65,22 @@ def boxplot_features(
     y='prop',
     ylabel="Freq"
 ):
+    """
+    2 row figure - upper banners are boxplots of motifs abundance between samples of the same study, lower banners are boxplots of motifs
+    of average per study motif abundance.
+    :param by_subj_df: by_subj motif analysis df, output of get_motif_analysis
+    :param by_study_df: by_study motif analysis df, output of get_motif_analysis
+    :param aliase2study: mapping of study id to alias name
+    :param case_aliases: list of case studies aliases
+    :param ctrl_aliases: list of ctrl studies aliases
+    :param colors: colors for the case and ctrl aliases
+    :param axes: subplots axes to plot - must match the dimension of teh input data frames
+    :param case_ctrl_color_diff: color difference between the case_aliases and ctrl_aliases
+    :param outlier_th: zscore threshold to discard outliers from the plotting
+    :param y: whe metric to use for the figures
+    :param ylabel: string to display as y label
+    :return:
+    """
     positions = np.arange(0, 10, 1)
     for i, col in enumerate(by_subj_df.loc[:, y].columns):
         ax = axes[0, i]
@@ -154,68 +178,12 @@ def boxplot_features(
         axes[1, col_itr].set_ylim(0, y_max_row2)
 
 
-def plot_junction_length(ctrl_sequence_df, case_sequence_df, study2alias):
-    case_sequence_df['Junction Length'] = case_sequence_df.junction_aa.str.len()
-    case_sequence_df['label'] = 'CASE'
-    ctrl_sequence_df['Junction Length'] = ctrl_sequence_df.junction_aa.str.len()
-    ctrl_sequence_df['label'] = 'CTRL'
-    df = case_sequence_df.append(ctrl_sequence_df)
-    df['alias'] = df.study_id.apply(lambda x: study2alias[x])
-    boxplot_features(
-        df,
-        df,
-        'v_family',
-        'Junction Length',
-        ['IGHV4', 'IGHV3', 'IGHV1', 'IGHV2', 'IGHV5'],
-        'figures/junction_length.pdf',
-        supylabel=True
-    )
-
-
-def plot_features(feature_table, labels, n_case, n_control, output_file=None):
-    fig, ax = plt.subplots(figsize=(12, 8))
-    feature_table = feature_table.loc[labels.index]
-    points = pd.value_counts([(x[1].loc[labels.index[labels]].sum(), x[1].loc[labels.index[~labels]].sum()) for x in
-                              feature_table.iteritems()])
-    if (0, 0) in points.index:
-        points = points.drop(index=(0, 0))
-    s = points.apply(lambda x: math.log(x) * 100 + 100)
-    df = pd.DataFrame(
-        [list(map(lambda x: x[0], points.index)), list(map(lambda x: x[1], points.index)), s.to_list()],
-        index=['x', 'y', 's']
-    ).transpose()
-    ax.scatter(
-        x='x', y='y', s='s', data=df.loc[(df.y > n_control) & (df.x > n_control)]
-    )
-    ax.scatter(
-        x='x', y='y', s='s', data=df.loc[(df.y > n_case) & (df.x <= n_control)]
-    )
-    ax.scatter(
-        x='x', y='y', s='s', data=df.loc[(df.x > n_case) & (df.y <= n_control)]
-    )
-
-    max_tick = int(max(ax.get_xticks().max(), ax.get_yticks().max()))
-    ax.set_xticks(range(max_tick), range(max_tick), fontsize=20)
-    ax.set_yticks(range(max_tick), range(max_tick), fontsize=20)
-    ax.set_aspect('equal')
-    ax.set_xlabel("Case")
-    ax.set_ylabel("Control")
-    ax.set_xlim(-1, max_tick)
-    ax.set_ylim(-1, max_tick)
-    ax.set_xticks(range(max_tick))
-    ax.set_xticklabels(range(max_tick), fontsize='20')
-    ax.set_yticks(range(max_tick))
-    ax.set_yticklabels(range(max_tick), fontsize='20')
-    ax.set_aspect('equal')
-    ax.grid(axis='both')
-
-    if output_file:
-        plt.savefig(output_file)
-
-    # In[14]:
-
-
-def plot_results(results, output_file=None):
+def plot_results(results: pd.DataFrame):
+    """
+    create box plot of cross validation results
+    :param results:  data frame - output of test_rep_classifier
+    :return:
+    """
     res_dict = {
         'Accuracy': results.accuracy_score,
         'Precision': results.precision_score,
@@ -229,6 +197,13 @@ def plot_results(results, output_file=None):
 
 
 def plot_results_side_by_side(results_l, name_l, figsize=(9, 6)):
+    """
+    create multiple banners plot of different cross validation results
+    :param results_l: list of results data frame - outputs of test_rep_classifier
+    :param name_l: list of labels matching each results data frame
+    :param figsize: figure size tuple
+    :return:
+    """
     fig, ax = plt.subplots(figsize=figsize)
     colors = sns.color_palette("Set2", len(results_l))
 
@@ -262,23 +237,30 @@ def plot_results_side_by_side(results_l, name_l, figsize=(9, 6)):
     plt.grid(True, axis='y', linestyle='--', linewidth=1)
 
 
-def plot_features_side_by_side(feature_table_dict, labels):
-    fig, ax_arr = plt.subplots(1, 2, figsize=(15, 10))
-
+def plot_features_side_by_side(feature_table_dict: dict, labels: pd.Series):
+    """
+    create multiple banners plot, each banner is a scatter plot of the between-samples clusters public case index vs public ctrl index
+    :param feature_table_dict: dictionary of public clusters feature tables - outputs of build_feature_table
+    :param labels: labels of the samples
+    :return:
+    """
+    fig, ax_arr = plt.subplots(1, 2, figsize=(20, 10))
+    all_points = pd.DataFrame()
     max_tick = 0
     for i, (name, feature_table) in enumerate(feature_table_dict.items()):
 
         ax = ax_arr[i]
         points = pd.value_counts(
-            [(x[1].loc[labels.index[labels]].sum(), x[1].loc[labels.index[~labels]].sum()) for x in feature_table.iteritems()])
+            [(x[1].loc[labels.index[labels]].sum(), x[1].loc[labels.index[~labels]].sum()) for x in feature_table.items()]
+        )
         if (0, 0) in points.index:
             points = points.drop(index=(0, 0))
-        # bonus = pd.Series(range(100, 100*len(points.unique())+100, 100), index=np.sort(points.unique()))
-        s = points.apply(lambda x: math.log(x) * 100 + 100)  # bonus[x])
+        s = points.apply(lambda x: math.log(x, 2) * 100 + 100)
         df = pd.DataFrame(
             [list(map(lambda x: x[0], points.index)), list(map(lambda x: x[1], points.index)), s.to_list()],
             index=['x', 'y', 's']
         ).transpose()
+        all_points = pd.concat([all_points, df])
         ax.scatter(
             x='x', y='y', s='s', data=df.loc[(df.y > 0) & (df.x > 0)]
         )
@@ -288,7 +270,6 @@ def plot_features_side_by_side(feature_table_dict, labels):
         ax.scatter(
             x='x', y='y', s='s', data=df.loc[df.y == 0]
         )
-
         max_tick = max(max_tick, int(max(ax.get_xticks().max(), ax.get_yticks().max())))
         ax.set_xticks(range(max_tick), range(max_tick), fontsize=20)
         ax.set_yticks(range(max_tick), range(max_tick), fontsize=20)
@@ -306,14 +287,31 @@ def plot_features_side_by_side(feature_table_dict, labels):
         ax.set_yticks(range(max_tick))
         ax.set_yticklabels(range(max_tick), fontsize='20')
         ax.set_aspect('equal')
-        ax.grid(axis='both')
+        ax.grid(axis='both', ls='--')
 
-    fig.supxlabel('Case', fontsize=20)
-    fig.supylabel('Control', fontsize=20)
+    fig.supxlabel('Case', fontsize=20, y=0.08)
+    fig.supylabel('Control', fontsize=20, x=0.08)
+
+    c = ax.scatter(x='x', y='y', s='s', data=all_points, edgecolors='w', c='w', alpha=0)
+    elements = c.legend_elements('sizes', num=10, func=lambda x: ((x - 100) / 100), color='gray', alpha=1)
+    legend = fig.legend(
+        *(np.flip(elements[0]), np.flip(elements[1])),
+        labelspacing=1.5,
+        handletextpad=1,
+        title=r'$Log_{2}$',
+        title_fontsize=20,
+        fontsize=15
+    )
+    legend.get_frame().set_linewidth(0.0)
 
 
-def create_studies_legend_handles(aliases, colors):
-
+def create_studies_legend_handles(aliases: list, colors):
+    """
+    auxiliary method to create handlers for legend of studies aliases
+    :param aliases: list of study id aliases
+    :param colors: list of colors matching the aliases
+    :return:
+    """
     handles = []
     for alias_itr, alias in enumerate(aliases):
         handles.append(
@@ -325,7 +323,8 @@ def create_studies_legend_handles(aliases, colors):
 
 
 def boxplot_junction_aa_length(
-    axes, case_airr_seq_df: pd.DataFrame,
+    axes,
+    case_airr_seq_df: pd.DataFrame,
     ctrl_airr_seq_df: pd.DataFrame,
     v_families: typing.Iterable,
     case_aliases: typing.Iterable,
@@ -334,6 +333,19 @@ def boxplot_junction_aa_length(
     colors: list,
     case_ctrl_color_diff=3
 ):
+    """
+    same as boxplot_features but ad-hoc implementation for junction AA length
+    :param axes: array of matplot lib axes
+    :param case_airr_seq_df: airr-seq data frame of case sequences
+    :param ctrl_airr_seq_df: airr-seq data frane if ctrl sequences
+    :param v_families: list of v families for which create banners
+    :param case_aliases: list of case study ids aliases
+    :param ctrl_aliases: list of ctrl study ids aliases
+    :param aliase2study: mapping of alias to study id
+    :param colors: colors for the study id aliases
+    :param case_ctrl_color_diff: color diff between the case and ctrl study id aliases
+    :return:
+    """
     by_v_family_by_study_junction_len = pd.Series(
         dtype=object, name='v_family', index=pd.MultiIndex.from_product([['CASE', 'CTRL'], v_families])
     )

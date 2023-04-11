@@ -79,7 +79,9 @@ def sample_by_n_clusters(
             sampled_df = subsample_n_clusters(single_sample_airr_seq_df, n_clusters, max_seq_per_cluster, cluster_id_col)
             sampled_df['subject_id'] = str(subject_id)
             sampled_df['study_id'] = str(study_id)
-            samples[(n_clusters, max_seq_per_cluster, cluster_id_col)] = multi_sample_airr_seq_df.append(sampled_df)
+            samples[(n_clusters, max_seq_per_cluster, cluster_id_col)] = pd.concat(
+                [multi_sample_airr_seq_df, sampled_df]
+            )
             clear_output(wait=True)
         del single_sample_airr_seq_df
 
@@ -125,7 +127,7 @@ def sample_by_n_sequences(
                 sampled_df = single_sample_airr_seq_df.sample(min(len(single_sample_airr_seq_df), n_sequences), random_state=42).copy(True)
                 sampled_df['subject_id'] = str(subject_id)
                 sampled_df['study_id'] = str(study_id)
-                samples[n_sequences] = multi_sample_airr_seq_df.append(sampled_df)
+                samples[n_sequences] = pd.concat([multi_sample_airr_seq_df, sampled_df])
                 clear_output(wait=True)
         del single_sample_airr_seq_df
     samples = samples.loc[samples.notna()]

@@ -152,12 +152,20 @@ def count_kmers_clusters(airr_seq_df, kmer2id, k):
 
 
 def get_by_subj_prop_df(by_subj_occur_df: pd.DataFrame):
-
+    """
+    create a proportion data frame from occurrences data frame by normalizing the rows
+    :param by_subj_occur_df: occurrences data frame
+    :return: proportion data frame
+    """
     return by_subj_occur_df.div(by_subj_occur_df.sum(axis=1), axis=0)
 
 
 def get_by_subj_zscore_df(by_subj_prop_df: pd.DataFrame):
-
+    """
+    compute zscore for the proportion considering other samples in teh same study
+    :param by_subj_prop_df: proportion data frame
+    :return: zscores data frame
+    """
     return pd.concat(
         [
             pd.concat(
@@ -173,7 +181,12 @@ def get_by_subj_zscore_df(by_subj_prop_df: pd.DataFrame):
     ).loc[by_subj_prop_df.index].fillna(0)
 
 
-def get_by_subj_motif_analysis_df(occur_df):
+def get_by_subj_motif_analysis_df(occur_df: pd.DataFrame):
+    """
+    create data frame with proportions and zscores according to the input occurrences data frame
+    :param occur_df: occurrences data frame
+    :return: a data frame with motif occurrences, proportions and zscores columns and samples in the rows
+    """
     prop_df = get_by_subj_prop_df(occur_df)
     zscore_df = get_by_subj_zscore_df(prop_df)
     occur_df.columns = pd.MultiIndex.from_product([['occur'], occur_df.columns])
@@ -182,7 +195,12 @@ def get_by_subj_motif_analysis_df(occur_df):
     return pd.concat([occur_df, prop_df, zscore_df], axis=1)
 
 
-def get_by_study_motif_analysis_df(by_subj_motif_df, outlier_th=3):
+def get_by_study_motif_analysis_df(by_subj_motif_df: pd.DataFrame, outlier_th=3):
+    """
+    create data frame with per study proportions and zscores according to the input by_subj_motif_df data frame
+    :param by_subj_motif_df: output data frame of get_by_subj_motif_analysis_df
+    :return: a data frame with motif occurrences, proportions and zscores columns and studies in the rows
+    """
     occur_df = by_subj_motif_df['occur'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.sum(axis=0))
     prop_df = by_subj_motif_df['prop'][by_subj_motif_df['zscore'].abs() < outlier_th].groupby('study_id').apply(lambda x: x.mean(axis=0))
     zscore_df = (prop_df - prop_df.mean()).div(prop_df.std(axis=0), axis=1).fillna(0)
@@ -192,7 +210,15 @@ def get_by_study_motif_analysis_df(by_subj_motif_df, outlier_th=3):
     return pd.concat([occur_df, prop_df, zscore_df], axis=1)
 
 
-def get_by_label_motif_analysis_df(by_study_motif_df, label, outlier_th=3, alpha=0.05):
+def get_by_label_motif_analysis_df(by_study_motif_df: pd.DataFrame, label: str, outlier_th: float = 3, alpha: float = 0.05):
+    """
+    create data frame with per label proportions and zscores according to the input by_study_motif_df data frame
+    :param by_study_motif_df: output data frame of get_by_study_motif_analysis_df
+    :param label: the label of the data (for example "CASE" or "CTRL")
+    :param outlier_th: zscore threshold to discard outliers from calculations
+    :param alpha: significance level for the CI calculation
+    :return: a data frame with motif occurrences, proportions and zscores columns and single row
+    """
     occur_df = by_study_motif_df['occur'][by_study_motif_df['zscore'].abs() < outlier_th].apply(lambda x: x.sum(axis=0))
     occur_df.name = 'occur'
     ci_df = pd.DataFrame(
@@ -217,29 +243,29 @@ def get_motif_analysis(
 ):
     """
 
-    :param case_airr_seq_df:
-    :param ctrl_airr_seq_df:
-    :param motif_occur_func:
-    :param outlier_th:
-    :param ci_alpha:
-    :return:
+    :param case_airr_seq_df: airr-seq data frame with case sequences
+    :param ctrl_airr_seq_df: airr-seq data frame with ctrl sequences
+    :param motif_occur_func: function to count the analysed motif occurrences
+    :param outlier_th: zscore threshold to discard outliers from calculations
+    :param alpha: significance level for the CI calculation
+    :return: by_subj, by_study and by_label motif analysis data frames
     """
     case_motif_df = motif_occur_func(case_airr_seq_df)
     ctrl_motif_df = motif_occur_func(ctrl_airr_seq_df)
-    case_motif_df = case_motif_df.append(pd.DataFrame(columns=ctrl_motif_df.columns)).fillna(0)
-    ctrl_motif_df = ctrl_motif_df.append(pd.DataFrame(columns=case_motif_df.columns)).fillna(0)
+    case_motif_df = pd.concat([case_motif_df, pd.DataFrame(columns=ctrl_motif_df.columns)]).fillna(0)
+    ctrl_motif_df = pd.concat([ctrl_motif_df, pd.DataFrame(columns=case_motif_df.columns)]).fillna(0)
     case_motif_df = get_by_subj_motif_analysis_df(case_motif_df)
     case_motif_df = pd.concat({'CASE': case_motif_df}, names=['label'])
     ctrl_motif_df = get_by_subj_motif_analysis_df(ctrl_motif_df)
     ctrl_motif_df = pd.concat({'CTRL': ctrl_motif_df}, names=['label'])
-    by_subj_motif_df = case_motif_df.append(ctrl_motif_df)
+    by_subj_motif_df = pd.concat([case_motif_df, ctrl_motif_df])
     del case_motif_df, ctrl_motif_df
 
     case_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CASE'], outlier_th=outlier_th)
     ctrl_motif_df = get_by_study_motif_analysis_df(by_subj_motif_df.loc['CTRL'], outlier_th=outlier_th)
     case_motif_df = pd.concat({'CASE': case_motif_df}, names=['label'])
     ctrl_motif_df = pd.concat({'CTRL': ctrl_motif_df}, names=['label'])
-    by_study_motif_df = case_motif_df.append(ctrl_motif_df)
+    by_study_motif_df = pd.concat([case_motif_df, ctrl_motif_df])
     del case_motif_df, ctrl_motif_df
 
     by_label_motif_df = pd.concat(
@@ -254,11 +280,11 @@ def get_motif_analysis(
 
 def load_motifs_analysis(motifs_dir: str, base_name: str, motif: str):
     """
-
-    :param motifs_dir:
-    :param base_name:
-    :param motif:
-    :return:
+    load saved motif analysis data frames
+    :param motifs_dir: location of the motif analysis files
+    :param base_name: common prefix of the motif analysis files
+    :param motif: name of the analysed motif
+    :return: tuple of the loaded motif files if exists else tuple of Nones
     """
     by_subj_motif_df, by_study_motif_df, by_label_motif_df = None, None, None
     by_subj_motif_df_file_path = os.path.join(motifs_dir, '_'.join([base_name, 'by_subj', motif + '.csv.gz']))
@@ -292,13 +318,13 @@ def save_motifs_analysis(
     motifs_dir: str, base_name: str, motif: str
 ):
     """
-
-    :param by_subj_motif_df:
-    :param by_study_motif_df:
-    :param by_label_motif_df:
-    :param motifs_dir:
-    :param base_name:
-    :param motif:
+    save motif analysis data frames to files
+    :param by_subj_motif_df: motif analysis per sample dataframe
+    :param by_study_motif_df: motif analysis per study dataframe
+    :param by_label_motif_df: motif analysis per label dataframe
+    :param motifs_dir: path of the directory to save the files
+    :param base_name: common prefix of the motif analysis files
+    :param motif: name of the analysed motif
     :return:
     """
 
@@ -314,15 +340,16 @@ def compare_to_reference_df(
     case_airr_seq_df: pd.DataFrame,
     ctrl_airr_seq_df: pd.DataFrame,
     ref_airr_seq_df: pd.DataFrame,
-    min_dist_th:float=0.1
+    min_dist_th: float = 0.1
 ):
     """
-
-    :param case_airr_seq_df:
-    :param ctrl_airr_seq_df:
-    :param ref_airr_seq_df:
+    look for matching Junction AA sequences between CASE and CTRL airr-seq dataframe and a reference airr-seq dataframe.
+    :param case_airr_seq_df: airr-seq data frame with case sequences
+    :param ctrl_airr_seq_df: airr-seq data frame with ctrl sequences
+    :param ref_airr_seq_df: a reference airr-seq data frame
     :param min_dist_th: normalized hamming distance threshold to consider two junction_aa sequences as a match
-    :return:
+    :return: tuple of dataframe with comparison results, data frame with the matched CASE sequences, data frame with the matched CTRL
+    sequences
     """
     case_matched_sequences = pd.DataFrame()
     ctrl_matched_sequences = pd.DataFrame()
@@ -344,8 +371,11 @@ def compare_to_reference_df(
             case_airr_seq_df.junction_aa.str.len() == junction_aa_length
         )
         min_dist_df.loc[junction_aa_length, ('CASE', 'support')] = sum(case_airr_seq_df.junction_aa.str.len() == junction_aa_length)
-        case_matched_sequences = case_matched_sequences.append(
-            case_airr_seq_df.loc[case_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
+        case_matched_sequences = pd.concat(
+            [
+                case_matched_sequences,
+                case_airr_seq_df.loc[case_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
+            ]
         )
 
     for junction_aa_length in ctrl_airr_seq_df.junction_aa.str.len().sort_values().unique():
@@ -362,8 +392,11 @@ def compare_to_reference_df(
             ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length
         )
         min_dist_df.loc[junction_aa_length, ('CTRL', 'support')] = sum(ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length)
-        ctrl_matched_sequences = ctrl_matched_sequences.append(
-            ctrl_airr_seq_df.loc[ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
+        ctrl_matched_sequences = pd.concat(
+            [
+                ctrl_matched_sequences,
+                ctrl_airr_seq_df.loc[ctrl_airr_seq_df.junction_aa.str.len() == junction_aa_length].loc[min_dist <= min_dist_th]
+            ]
         )
 
     min_dist_df = min_dist_df.loc[(min_dist_df[('CASE', 'absolute')] > 0) | (min_dist_df[('CTRL', 'absolute')] > 0)]
@@ -372,7 +405,16 @@ def compare_to_reference_df(
 
 
 def get_case_control_sequence_df(airr_seq_df, labels, dist_mat_dir, dist_th, case_th=0, ctrl_th=0):
-
+    """
+    split airr-seq data frame to CASE/CTRL representative sequences
+    :param airr_seq_df: airr-seq df file
+    :param labels: labels of the samples
+    :param dist_mat_dir: location of the distance matrices between the sequences junctions AA
+    :param dist_th: norm dist cut off value for the hierarchical clustering
+    :param case_th: public case index threshold to choose representative sequences
+    :param ctrl_th: public ctrl index threshold to choose representative sequences
+    :return: representative CASE and CTRL airr-seq dataframe and the feature-table that was used for the sequences selection
+    """
     airr_seq_df['cluster_id'] = add_cluster_id(
         airr_seq_df, dist_mat_dir, dist_th
     )

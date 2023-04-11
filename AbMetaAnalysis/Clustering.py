@@ -20,7 +20,6 @@ import tempfile
 # AbMetaAnalysis imports
 import sys
 
-sys.path.append('/work/boazfr/dev/packages')
 from AbMetaAnalysis.Defaults import default_random_state
 
 
@@ -100,7 +99,7 @@ def add_cluster_id(
             # sequences from same study and/or same subject. The addition is small enough to only be relevant as
             # break even rule for sequences pairs with same hamming distance
             res.loc[frame.index] = max_cluster_id + AgglomerativeClustering(
-                affinity='precomputed', linkage='complete', distance_threshold=dist_th + 0.0002, n_clusters=None
+                metric='precomputed', linkage='complete', distance_threshold=dist_th + 0.0002, n_clusters=None
             ).fit_predict(dist_df)
         max_cluster_id = res.max() + 1
     res = res.astype(int)
@@ -157,6 +156,15 @@ def cluster_sample(
     dist_th='0.0',
     force=False
 ):
+    """
+    add within-sample cluster to airr-seq tsv file
+    :param airr_seq_df_file_path: path to the airr-seq tsv file
+    :param max_sequences: max number of sequences to cluster - if the file has more sequences than this number it will be sub-sampled
+    :param linkage: linkage method for the hierarchical clustering
+    :param dist_th: normalized dist cut-off value for the hierarchical clustering
+    :param force: force the clustering even the matching cluster_id column already exists in file
+    :return:
+    """
     try:
         define_clones_path = subprocess.check_output('which DefineClones.py', shell=True).decode("utf-8").strip('\n')
     except subprocess.CalledProcessError as exception:

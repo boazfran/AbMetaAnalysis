@@ -167,7 +167,7 @@ def test_rep_classifier(
         validation_labels = labels[validation_index]
         train_labels = labels.drop(index=validation_labels.index)
         if train_only_labels is not None:
-            train_labels = train_labels.append(train_only_labels)
+            train_labels = pd.concat([train_labels, train_only_labels])
         for case_th in case_th_values:
             for ctrl_th in ctrl_th_values:
                 if ctrl_th > case_th:
@@ -182,8 +182,8 @@ def test_rep_classifier(
     result_metrics, result_folds = pd.DataFrame(), pd.DataFrame()
     for result_id in result_ids:
         result_metrics_itr, result_folds_itr = ray.get(result_id)
-        result_metrics = result_metrics.append(result_metrics_itr, ignore_index=True)
-        result_folds = result_folds.append(result_folds_itr, ignore_index=True)
+        result_metrics = pd.concat([result_metrics, result_metrics_itr], ignore_index=True)
+        result_folds = pd.concat([result_folds, result_folds_itr], ignore_index=True)
 
     return result_metrics, result_folds
 
