@@ -124,9 +124,11 @@ def subsample(
             else:
                 assert False, f'Unknown subsampling method {cfg.subsample_method}'
 
-            if not cfg["force"] and os.path.isfile(output_file_path):
-                if input_file_idx == 0:
+            if input_file_idx == 0:
+                if not cfg["force"] and os.path.isfile(output_file_path):
                     print(f'file {output_file_path} already exists - skipping sampling')
+                continue
+            elif output_files[cfg_idx] is None:
                 continue
             if single_sample_airr_seq_df is None:
                 print(f'Sampling file {input_file_idx + 1}: {sample.input_file}')
