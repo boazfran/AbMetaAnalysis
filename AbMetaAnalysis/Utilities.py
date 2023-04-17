@@ -1,6 +1,8 @@
 import pandas as pd
 from changeo.Gene import getFamily, getGene
 import numpy as np
+import os
+import subprocess
 
 
 alleles_mapping = {
@@ -765,3 +767,23 @@ def filter_airr_seq_df_by_labels(airr_seq_df: pd.DataFrame, labels: pd.Series) -
     """
     return airr_seq_df[airr_seq_df.set_index(['study_id', 'subject_id']).index.isin(labels.index)]
 
+
+def add_mu_freq_inplace(
+    airr_seq_df_file_path: str,
+    cluster_col: str,
+    force=False
+):
+    for chunk in pd.read_csv(airr_seq_df_file_path, sep='\t', chunksize=1):
+        if not force and "mu_freq" in chunk.columns:
+            print(f'"mu_freq" already in {airr_seq_df_file_path} columns - skipping')
+            return
+        break
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    cmd = ' '.join(['nice -19 Rscript', os.path.join(dir_path, 'count_mutations.R'), cluster_col, airr_seq_df_file_path])
+    try:
+        print(f'find mu_freq file {airr_seq_df_file_path}: {cmd}')
+        subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError as exception:
+        print(exception.output)
+        print(f'computing mu_freq for file {airr_seq_df_file_path} failed')
