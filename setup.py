@@ -4,6 +4,8 @@ setup(
     name='AbMetaAnalysis',
     version='1.0.4',
     packages=find_packages(),
+    package_data={'AbMetaAnalysis': ['AbMetaAnalysis/count_mutations.R']},
+    include_package_data=True,
     url='https://github.com/boazfran/AbMetaAnalysis',
     license='MIT (X11)',
     author='Boaz Frankel',
