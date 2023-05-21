@@ -214,6 +214,7 @@ def sample_by_n_sequences(
     force: bool = False
 ):
     # backwards compatibility implementation
+    subsample_configs = []
     for n_sequences in n_sequences_values:
         subsample_configs.append({
             'n_sequences': n_sequences,
