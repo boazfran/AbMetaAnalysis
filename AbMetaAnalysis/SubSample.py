@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from IPython.display import clear_output
+import gzip
 
 
 def subsample_top_n_abundant_clusters(
@@ -93,13 +94,17 @@ def subsample(
     # first aggregate all the columns from all files
     base_columns = set(["study_id", "subject_id"])
     for input_file in metadata.input_file:
-        with open(os.path.join(input_dir, input_file), 'r') as f_in:
+        open_func = gzip.open if input_file.endswith('.gz') else open
+        with open_func(os.path.join(input_dir, input_file), 'r') as f_in:
             for chunk_df in pd.read_csv(f_in, sep='\t', chunksize=1):
                 base_columns = base_columns.union(chunk_df.columns)
                 break
+    subsample_configs_copy = subsample_configs.copy()
     for input_file_idx, ((study_id, subject_id), sample) in enumerate(metadata.iterrows()):
+        if len(subsample_configs_copy) == 0:
+            break
         single_sample_airr_seq_df = None
-        for cfg_idx, cfg in enumerate(subsample_configs):
+        for cfg_idx, cfg in enumerate(subsample_configs_copy[:]):
 
             if cfg['subsample_method'] == 'top_n_abundant_clusters':
                 output_file_path = os.path.join(
@@ -127,7 +132,8 @@ def subsample(
             if input_file_idx == 0:
                 if not cfg["force"] and os.path.isfile(output_file_path):
                     print(f'file {output_file_path} already exists - skipping sampling')
-                continue
+                    subsample_configs_copy.remove(cfg)
+                    continue
             elif pd.isna(output_files[cfg_idx]) is None:
                 continue
             if single_sample_airr_seq_df is None:

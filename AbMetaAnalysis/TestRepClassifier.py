@@ -13,7 +13,6 @@ import ray
 import psutil
 
 # AbMetaAnalysis Imports
-sys.path.append('/work/boazfr/dev/packages/')
 from AbMetaAnalysis.RepClassifier import RepClassifier
 from AbMetaAnalysis.Utilities import filter_airr_seq_df_by_labels, build_feature_table, load_sampled_airr_seq_df
 from AbMetaAnalysis.Clustering import add_cluster_id, match_cluster_id, save_distance_matrices
@@ -24,9 +23,6 @@ from AbMetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_me
 if not ray.is_initialized():
     ray.init(
         ignore_reinit_error=True,
-        runtime_env={
-            'working_dir': '/work/boazfr/dev/packages',
-        },
         object_store_memory=int(psutil.virtual_memory().total*ray_object_store_memory_percentage),
         num_cpus=max(int(os.cpu_count()*ray_num_cpus_percentage), 1)
     )

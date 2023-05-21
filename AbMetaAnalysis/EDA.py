@@ -54,6 +54,18 @@ def mannwhitneyu_test(
     ).transpose().sort_values('pvalue')
 
 
+def count_v_family_j_family_pairs(airr_seq_df, v_call_field="v_call_original"):
+    airr_seq_df['j_family'] = airr_seq_df.j_call.apply(getFamily)
+    return airr_seq_df.groupby(['study_id', 'subject_id']).apply(
+        lambda x: x.groupby([v_call_field, 'j_family']).apply(lambda y: len(y))
+    ).droplevel(2).fillna(0)
+
+
+def count_v_gene_j_allele_pairs(airr_seq_df, v_call_field="v_call_original"):
+    return airr_seq_df.groupby(['study_id', 'subject_id']).apply(
+        lambda x: x.groupby([v_call_field, 'j_call']).apply(lambda y: len(y))
+    ).droplevel(2).fillna(0)
+
 def count_v_family_by_subj(airr_seq_df, v_call_field="v_call_original"):
     return airr_seq_df.groupby(['study_id', 'subject_id']).apply(
         lambda x: pd.DataFrame(x[v_call_field].apply(getFamily).value_counts()).transpose()
