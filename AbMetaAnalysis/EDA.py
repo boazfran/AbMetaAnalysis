@@ -264,8 +264,8 @@ def get_motif_analysis(
     """
     case_motif_df = motif_occur_func(case_airr_seq_df)
     ctrl_motif_df = motif_occur_func(ctrl_airr_seq_df)
-    case_motif_df = pd.concat([case_motif_df, pd.DataFrame(columns=ctrl_motif_df.columns)]).fillna(0)
-    ctrl_motif_df = pd.concat([ctrl_motif_df, pd.DataFrame(columns=case_motif_df.columns)]).fillna(0)
+    case_motif_df = pd.concat([case_motif_df, pd.DataFrame(columns=ctrl_motif_df.columns, index=ctrl_motif_df.index[0:0])]).fillna(0)
+    ctrl_motif_df = pd.concat([ctrl_motif_df, pd.DataFrame(columns=case_motif_df.columns, index=case_motif_df.index[0:0])]).fillna(0)
     case_motif_df = get_by_subj_motif_analysis_df(case_motif_df)
     case_motif_df = pd.concat({'CASE': case_motif_df}, names=['label'])
     ctrl_motif_df = get_by_subj_motif_analysis_df(ctrl_motif_df)

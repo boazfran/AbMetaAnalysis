@@ -11,6 +11,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 import os
 import ray
 import psutil
+import logging
 
 # AbMetaAnalysis Imports
 from AbMetaAnalysis.RepClassifier import RepClassifier
@@ -21,6 +22,7 @@ from AbMetaAnalysis.Defaults import ray_num_cpus_percentage, ray_object_store_me
 
 
 if not ray.is_initialized():
+    logging.getLogger('ray').setLevel(logging.ERROR) # silence warnings from ray
     ray.init(
         ignore_reinit_error=True,
         object_store_memory=int(psutil.virtual_memory().total*ray_object_store_memory_percentage),

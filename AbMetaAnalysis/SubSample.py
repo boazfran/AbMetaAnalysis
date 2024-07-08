@@ -106,6 +106,7 @@ def subsample(
         single_sample_airr_seq_df = None
         for cfg_idx, cfg in enumerate(subsample_configs_copy[:]):
 
+            columns = base_columns
             if cfg['subsample_method'] == 'top_n_abundant_clusters':
                 output_file_path = os.path.join(
                     output_dir,
@@ -217,6 +218,7 @@ def sample_by_n_sequences(
     subsample_configs = []
     for n_sequences in n_sequences_values:
         subsample_configs.append({
+            'subsample_method': 'random_n_sequences',
             'n_sequences': n_sequences,
             'force': force
         })
